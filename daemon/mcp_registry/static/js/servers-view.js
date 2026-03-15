@@ -1241,22 +1241,84 @@ export async function renderServersView() {
   // Scope audit panel — shows every server's scope status
   renderPromoteBanner(rightCol);  // async, renders when data arrives
 
-  // All non-universal servers
+  // Split non-universal servers into active vs disabled
   const universalSet = new Set(state.groups.__universal__?.servers || []);
-  const allServers = Object.keys(state.servers).filter(s => !universalSet.has(s)).sort();
+  const assignedToGroup = new Set();
+  for (const [gk, g] of Object.entries(state.groups)) {
+    if (gk === '__universal__') continue;
+    for (const s of g.servers || []) assignedToGroup.add(s);
+  }
 
-  if (allServers.length > 0) {
+  const allNonUniversal = Object.keys(state.servers).filter(s => !universalSet.has(s)).sort();
+  const activeServers = allNonUniversal.filter(s => assignedToGroup.has(s));
+  const disabledServers = allNonUniversal.filter(s => !assignedToGroup.has(s));
+
+  // Active servers (assigned to a group)
+  if (activeServers.length > 0) {
     const title = document.createElement('h2');
     title.style.cssText = 'font-size:14px;color:var(--text-dim);margin-bottom:12px;font-weight:500';
-    title.textContent = `All Servers (${allServers.length})`;
+    const activeTokens = activeServers.reduce((sum, s) => sum + (_tokenBudgetCache?.servers?.[s]?.tokens || 0), 0);
+    title.textContent = `Active Servers (${activeServers.length})`;
+    if (activeTokens > 0) {
+      const tokenNote = document.createElement('span');
+      tokenNote.style.cssText = 'font-weight:400;color:var(--text-dim);margin-left:8px';
+      tokenNote.textContent = `\u00B7 ${activeTokens.toLocaleString()} tokens`;
+      title.appendChild(tokenNote);
+    }
     rightCol.appendChild(title);
 
     const grid = document.createElement('div');
     grid.className = 'cards-grid';
-    for (const name of allServers) {
+    for (const name of activeServers) {
       grid.appendChild(createServerTile(name));
     }
     rightCol.appendChild(grid);
+  }
+
+  // Disabled servers (not assigned to any group)
+  if (disabledServers.length > 0) {
+    const section = document.createElement('div');
+    section.style.cssText = 'margin-top:24px;padding-top:20px;border-top:1px solid var(--border)';
+
+    const headerRow = document.createElement('div');
+    headerRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer';
+
+    const chevron = document.createElement('span');
+    chevron.style.cssText = 'color:var(--text-dim);font-size:10px';
+    chevron.textContent = '\u25B6';
+
+    const title = document.createElement('h2');
+    title.style.cssText = 'font-size:14px;color:var(--text-dim);font-weight:500;margin:0';
+    title.textContent = `Disabled (${disabledServers.length})`;
+
+    const disabledTokens = disabledServers.reduce((sum, s) => sum + (_tokenBudgetCache?.servers?.[s]?.tokens || 0), 0);
+    if (disabledTokens > 0) {
+      const savedNote = document.createElement('span');
+      savedNote.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(63,185,80,0.15);color:var(--green);font-weight:500;margin-left:8px';
+      savedNote.textContent = `${disabledTokens.toLocaleString()} tokens saved`;
+      title.appendChild(savedNote);
+    }
+
+    headerRow.append(chevron, title);
+
+    const grid = document.createElement('div');
+    grid.className = 'cards-grid';
+    grid.style.display = 'none';
+    for (const name of disabledServers) {
+      const tile = createServerTile(name);
+      tile.style.opacity = '0.5';
+      tile.style.borderStyle = 'dashed';
+      grid.appendChild(tile);
+    }
+
+    headerRow.addEventListener('click', () => {
+      const showing = grid.style.display !== 'none';
+      grid.style.display = showing ? 'none' : '';
+      chevron.textContent = showing ? '\u25B6' : '\u25BC';
+    });
+
+    section.append(headerRow, grid);
+    rightCol.appendChild(section);
   }
 
   layout.appendChild(rightCol);
