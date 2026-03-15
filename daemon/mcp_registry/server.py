@@ -23,6 +23,7 @@ from mcp_registry.deployer import check_gitignore_status, add_gitignore_bulk, re
 from mcp_registry import activity
 from mcp_registry import webhook
 from mcp_registry import deploy_history
+from mcp_registry import catalog as catalog_mod
 from mcp_registry.renderer import REGISTRY_HTML
 
 import sys
@@ -134,6 +135,75 @@ async def get_server_catalog():
         with open(catalog_path) as f:
             return json.load(f)
     return JSONResponse({"error": "Catalog not found"}, status_code=404)
+
+
+@app.get("/server-catalog/completeness")
+async def catalog_completeness():
+    """Completeness scores for all servers in the catalog."""
+    catalog_path = Path(__file__).parent / "server_catalog.json"
+    if not catalog_path.exists():
+        return JSONResponse({"error": "Catalog not found"}, status_code=404)
+
+    with open(catalog_path) as f:
+        cat = json.load(f)
+
+    servers_scores = []
+    for name, entry in (cat.get("servers") or {}).items():
+        comp = catalog_mod.compute_completeness(entry)
+        servers_scores.append({"server": name, **comp})
+
+    total = len(servers_scores)
+    avg_score = round(sum(s["score"] for s in servers_scores) / total) if total else 0
+    grade_counts = {}
+    for s in servers_scores:
+        grade_counts[s["grade"]] = grade_counts.get(s["grade"], 0) + 1
+
+    return {
+        "total": total,
+        "average_score": avg_score,
+        "grades": grade_counts,
+        "servers": servers_scores,
+    }
+
+
+@app.post("/server-catalog/enrich")
+async def enrich_catalog():
+    """Auto-enrich all servers from filesystem inspection."""
+    catalog_path = Path(__file__).parent / "server_catalog.json"
+    if not catalog_path.exists():
+        return JSONResponse({"error": "Catalog not found"}, status_code=404)
+
+    with open(catalog_path) as f:
+        cat = json.load(f)
+
+    # Read claude.json for server configs
+    claude_json_path = Path.home() / ".claude.json"
+    claude_json = {}
+    if claude_json_path.exists():
+        try:
+            with open(claude_json_path) as f:
+                claude_json = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    import asyncio
+    loop = asyncio.get_event_loop()
+    updated_cat = await loop.run_in_executor(
+        None, catalog_mod.enrich_all, cat, claude_json
+    )
+
+    # Save updated catalog
+    with open(catalog_path, "w") as f:
+        json.dump(updated_cat, f, indent=2)
+
+    # Compute new completeness scores
+    servers_scores = []
+    for name, entry in (updated_cat.get("servers") or {}).items():
+        comp = catalog_mod.compute_completeness(entry)
+        servers_scores.append({"server": name, **comp})
+
+    activity.log_event("catalog_enrich", {"servers_enriched": len(servers_scores)})
+    return {"ok": True, "servers": servers_scores}
 
 
 # ── Servers ──────────────────────────────────────────────────────

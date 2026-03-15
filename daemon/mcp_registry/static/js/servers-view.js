@@ -7,6 +7,7 @@ import { state, api, loadData, renderPendingBanner } from './registry.js';
 let selectedServer = null;
 let _catalogCache = null;
 let _auditCache = null;
+let _completenessCache = null;
 
 // ── Server tile ─────────────────────────────────────────────────
 
@@ -263,6 +264,21 @@ async function renderPromoteBanner(container) {
     badgeRow.appendChild(b);
   }
 
+  // Completeness badge
+  let completenessMap = {};
+  try {
+    const completeness = await api.get('/server-catalog/completeness');
+    _completenessCache = completeness;
+    const incomplete = completeness.servers.filter(s => s.grade === 'D' || s.grade === 'F').length;
+    for (const s of completeness.servers) completenessMap[s.server] = s;
+    if (incomplete > 0) {
+      const b = document.createElement('span');
+      b.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(210,153,34,0.15);color:var(--orange);font-weight:500';
+      b.textContent = `${incomplete} undocumented`;
+      badgeRow.appendChild(b);
+    }
+  } catch {}
+
   // Promote All button in header
   const promoteBtn = document.createElement('button');
   promoteBtn.className = 'btn';
@@ -292,7 +308,30 @@ async function renderPromoteBanner(container) {
     promoteBtn.disabled = true;
   }
 
-  header.append(chevron, headerTitle, badgeRow, promoteBtn);
+  // Enrich button in header
+  const enrichBtn = document.createElement('button');
+  enrichBtn.className = 'btn';
+  enrichBtn.style.cssText = 'font-size:11px;padding:3px 10px;flex-shrink:0';
+  enrichBtn.textContent = 'Enrich';
+  enrichBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    enrichBtn.disabled = true;
+    enrichBtn.textContent = 'Enriching...';
+    try {
+      const result = await api.post('/server-catalog/enrich');
+      enrichBtn.textContent = 'Done';
+      enrichBtn.style.color = 'var(--green)';
+      _completenessCache = null;
+      _catalogCache = null;
+      import('./toast.js').then(m => m.showToast('Auto-enrichment complete', 'success'));
+      setTimeout(() => loadData(), 1000);
+    } catch {
+      enrichBtn.textContent = 'Failed';
+      enrichBtn.disabled = false;
+    }
+  });
+
+  header.append(chevron, headerTitle, badgeRow, enrichBtn, promoteBtn);
   panel.appendChild(header);
 
   // Body — detailed server list
@@ -335,7 +374,18 @@ async function renderPromoteBanner(container) {
     typeBadge.className = 'type-badge';
     typeBadge.textContent = srv.type;
 
-    nameRow.append(name, statusBadge, typeBadge);
+    // Completeness grade badge
+    if (completenessMap[srv.server]) {
+      const comp = completenessMap[srv.server];
+      const gradeColors = { A: 'var(--green)', B: 'var(--accent)', C: 'var(--orange)', D: 'var(--red)', F: 'var(--red)' };
+      const gradeBadge = document.createElement('span');
+      gradeBadge.style.cssText = `font-size:10px;padding:1px 6px;border-radius:3px;font-weight:700;color:${gradeColors[comp.grade]};border:1px solid ${gradeColors[comp.grade]}`;
+      gradeBadge.textContent = `${comp.grade} ${comp.score}%`;
+      gradeBadge.title = comp.missing.join(', ');
+      nameRow.append(name, statusBadge, typeBadge, gradeBadge);
+    } else {
+      nameRow.append(name, statusBadge, typeBadge);
+    }
 
     const detail = document.createElement('div');
     detail.style.cssText = 'color:var(--text-dim);margin-top:2px;line-height:1.5';
@@ -552,6 +602,90 @@ async function renderServerDetail(container, name) {
     cards.appendChild(infoCard('Recommended', cat.recommended_scope));
   }
   container.appendChild(cards);
+
+  // Completeness card
+  try {
+    if (!_completenessCache) {
+      _completenessCache = await api.get('/server-catalog/completeness');
+    }
+    const compEntry = (_completenessCache.servers || []).find(s => s.server === name);
+    if (compEntry) {
+      const compSection = document.createElement('div');
+      compSection.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px';
+
+      const compTitle = document.createElement('div');
+      compTitle.style.cssText = 'font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px';
+      compTitle.textContent = 'Documentation Completeness';
+
+      const gradeColors = { A: 'var(--green)', B: 'var(--accent)', C: 'var(--orange)', D: 'var(--red)', F: 'var(--red)' };
+      const gradeColor = gradeColors[compEntry.grade] || 'var(--text-dim)';
+
+      const gradeRow = document.createElement('div');
+      gradeRow.style.cssText = 'display:flex;align-items:center;gap:16px;margin-bottom:12px';
+
+      const gradeLetter = document.createElement('span');
+      gradeLetter.style.cssText = `font-size:32px;font-weight:800;color:${gradeColor}`;
+      gradeLetter.textContent = compEntry.grade;
+
+      const scoreBar = document.createElement('div');
+      scoreBar.style.cssText = 'flex:1';
+      const scoreLabel = document.createElement('div');
+      scoreLabel.style.cssText = `font-size:14px;font-weight:600;color:${gradeColor};margin-bottom:4px`;
+      scoreLabel.textContent = `${compEntry.score}% complete`;
+      const barBg = document.createElement('div');
+      barBg.style.cssText = 'height:6px;background:var(--bg-hover);border-radius:3px;overflow:hidden';
+      const barFill = document.createElement('div');
+      barFill.style.cssText = `height:100%;width:${compEntry.score}%;background:${gradeColor};border-radius:3px;transition:width 0.3s`;
+      barBg.appendChild(barFill);
+      scoreBar.append(scoreLabel, barBg);
+
+      gradeRow.append(gradeLetter, scoreBar);
+
+      compSection.append(compTitle, gradeRow);
+
+      // Missing fields
+      if (compEntry.missing && compEntry.missing.length > 0) {
+        const missingLabel = document.createElement('div');
+        missingLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--text-dim);margin-bottom:6px;margin-top:4px';
+        missingLabel.textContent = `Missing fields (${compEntry.missing.length})`;
+        compSection.appendChild(missingLabel);
+
+        const missingList = document.createElement('div');
+        missingList.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px';
+        for (const field of compEntry.missing) {
+          const tag = document.createElement('span');
+          tag.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:3px;background:var(--bg-hover);color:var(--text-dim);font-family:"SF Mono",Monaco,monospace';
+          tag.textContent = field;
+          missingList.appendChild(tag);
+        }
+        compSection.appendChild(missingList);
+      }
+
+      // Auto-enrich button
+      const enrichBtn = document.createElement('button');
+      enrichBtn.className = 'btn';
+      enrichBtn.style.cssText = 'margin-top:12px;font-size:12px';
+      enrichBtn.textContent = 'Auto-Enrich';
+      enrichBtn.addEventListener('click', async () => {
+        enrichBtn.disabled = true;
+        enrichBtn.textContent = 'Enriching...';
+        try {
+          await api.post('/server-catalog/enrich');
+          enrichBtn.textContent = 'Done — Refreshing...';
+          enrichBtn.style.color = 'var(--green)';
+          _completenessCache = null;
+          _catalogCache = null;
+          setTimeout(() => renderServersView(), 500);
+        } catch {
+          enrichBtn.textContent = 'Failed';
+          enrichBtn.disabled = false;
+        }
+      });
+      compSection.appendChild(enrichBtn);
+
+      container.appendChild(compSection);
+    }
+  } catch {}
 
   // Scope detail
   if (audit.detail) {
