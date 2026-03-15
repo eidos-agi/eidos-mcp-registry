@@ -28,6 +28,10 @@
         "last_commit_date": "2026-02-22 18:24:30 +0100",
         "last_commit_message": "BACK-397 - Fix drag-and-drop between columns when target is shorter (#544)",
         "code_age_days": 20
+      },
+      "docs": {
+        "overview": "Git-native task and project management via Backlog.md CLI, tracks tasks as markdown files in repos",
+        "code_location": "/Users/dshanklinbv/repos-aic/Backlog.md"
       }
     },
     "cerebro-mcp": {
@@ -50,6 +54,11 @@
         "last_commit_date": "2026-03-12 23:42:59 -0500",
         "last_commit_message": "Add study/sleep knowledge compression and expand tool definitions",
         "code_age_days": 2
+      },
+      "docs": {
+        "overview": "Organizational knowledge base \u2014 remember, recall, and search across ADRs, SOPs, and topics",
+        "security_notes": "Accesses sensitive data: organizational knowledge, architectural decisions, SOPs. Contains institutional knowledge and architectural decisions. Internal only.",
+        "code_location": "/Users/dshanklinbv/repos-greenmark-waste-solutions/cerebro-mcp"
       }
     },
     "claude-resume": {
@@ -76,6 +85,20 @@
         "last_commit_date": "2026-03-08 03:48:13 -0500",
         "last_commit_message": "Add comprehensive project and architecture documentation",
         "code_age_days": 7
+      },
+      "docs": {
+        "overview": "Session recovery for Claude Code \u2014 find, inspect, and resume crashed or abandoned sessions",
+        "tools": {
+          "read_session": "Read user/assistant messages from a Claude Code session.",
+          "recent_sessions": "List recently active Claude Code sessions.",
+          "session_summary": "Get or generate an AI summary for a session.",
+          "_launch_terminal": "Open a terminal window, cd to project, run command.",
+          "resume_in_terminal": "Resume or fork a Claude Code session in a new terminal window.",
+          "_dedup_file_events": "Deduplicate consecutive file writes to the same path.",
+          "_find_merged_ids": "Scan a session JSONL for merge_context calls and extract session IDs."
+        },
+        "security_notes": "Accesses sensitive data: session transcripts, code context, conversation history. Reads Claude Code session transcripts which may contain sensitive code and conversations from any project.",
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/claude-resume"
       }
     },
     "context7": {
@@ -97,10 +120,14 @@
         "url": "https://mcp.context7.com/mcp",
         "code_repo": "https://mcp.context7.com",
         "code_age_days": 0
+      },
+      "docs": {
+        "overview": "Up-to-date library and framework documentation for LLMs, powered by Upstash",
+        "code_location": "https://mcp.context7.com"
       }
     },
     "director-daemon": {
-      "summary": "Autonomous orchestrator for recurring personal work \u2014 comms extraction, security monitoring, scheduling",
+      "summary": "Autonomous comms orchestrator \u2014 extracts, indexes, and searches email and Teams messages. Runs on cron, self-heals with Claude when jobs fail. Exposes a shadow copy database for agent-level comms intelligence.",
       "source": "/Users/dshanklinbv/repos-personal/aic-director-daemon/mcp_server/server.py",
       "maintainer": "internal",
       "tool_count": 8,
@@ -125,6 +152,31 @@
         "last_commit_date": "2026-02-25 23:22:32 -0600",
         "last_commit_message": "Consolidate runtime data under ~/.director-daemon/",
         "code_age_days": 17
+      },
+      "docs": {
+        "overview": "The Director Daemon is a background service that continuously extracts communications from Outlook (email) and Microsoft Teams into a local SQLite database (comms.db). It provides full-text search, attention scoring, entity extraction, and thread retrieval to any Claude Code agent via MCP.",
+        "architecture": "Zero AI tokens on the happy path \u2014 every job is plain Python on cron. Claude only intervenes when something breaks: reads the adapter code, diagnoses, patches, retries, and documents the fix.",
+        "tools": {
+          "search_comms": "Full-text search across all communications. Supports keyword queries, date ranges, source filtering. Returns messages with attention scores, entities, and metadata.",
+          "get_thread": "Fetch a complete conversation thread by thread ID. Returns all messages in chronological order with participants and metadata.",
+          "get_high_attention": "Get messages ranked by attention score (AI-computed priority). Surfaces items that likely need human response or action.",
+          "list_sources": "List all communication sources (email accounts, Teams channels) with message counts and last sync timestamps.",
+          "get_recent": "Get recent messages, optionally filtered by source type. Useful for checking what came in since last review.",
+          "get_entities": "Query extracted entities: people, companies, topics, action items. Built from NLP analysis of all messages.",
+          "report": "File a structured report (bug, observation, recommendation) that gets deduped and tracked. Used by other agents to flag issues.",
+          "known_issues": "List open issues/reports filed via the report tool. Shows status, severity, occurrence count, and priority score."
+        },
+        "data_sources": [
+          "Outlook email (via Exchange/Graph API)",
+          "Microsoft Teams messages",
+          "Local SQLite FTS5 database at ~/.director-daemon/comms.db"
+        ],
+        "security_notes": "Accesses ALL email and Teams messages. Contains sensitive business communications, personal messages, financial discussions, and confidential client data. Should only be scoped to workspaces where comms access is appropriate.",
+        "dependencies": [
+          "Python 3.11+",
+          "FastMCP",
+          "SQLite with FTS5"
+        ]
       }
     },
     "eidos": {
@@ -143,6 +195,17 @@
         "last_commit_date": "2026-03-11 00:30:52 -0500",
         "last_commit_message": "chore: update server, add providers, cleanup docs",
         "code_age_days": 4
+      },
+      "docs": {
+        "overview": "Eidos AGI platform knowledge base \u2014 CLI guides, railway guides, vault guides, and cross-service search",
+        "tools": {
+          "eidos_cli_guide": "Get the complete guide for using the eidos CLI.",
+          "eidos_vault_guide": "Get the guide for using the Eidos Vault to store and retrieve secrets.",
+          "eidos_railway_guide": "Get the guide for deploying Eidos services to Railway via Railguey.",
+          "eidos_service_onboarding_guide": "Get the guide for onboarding a new service to the Eidos AGI platform.",
+          "eidos_knowledge_sources": "List all searchable knowledge sources and their document counts."
+        },
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/eidos-mcp"
       }
     },
     "eidos-book-forge": {
@@ -161,6 +224,18 @@
         "last_commit_date": "2026-03-11 01:25:08 -0500",
         "last_commit_message": "chore: pipeline stages, TTS, config updates",
         "code_age_days": 4
+      },
+      "docs": {
+        "overview": "Composable book publishing pipeline \u2014 markdown in, formatted books out",
+        "tools": {
+          "book_build": "Build a book from markdown into EPUB, PDF, HTML, web, audiobook, or sample.",
+          "book_check": "Run quality checks on a book: broken images, consistency, TODOs, internal links.",
+          "book_stats": "Get word counts, reading time, figure counts, and figure index for a book.",
+          "book_cover": "Generate a book cover \u2014 artwork generation via image-forge and/or text overlay via Pillow.",
+          "book_pipeline_status": "Get the publishing pipeline status for a book \u2014 which stages are complete, in progress, or pending.",
+          "book_pipeline_run": "Run, mark, or reset a publishing pipeline stage."
+        },
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/book-forge"
       }
     },
     "eidos-consent": {
@@ -183,6 +258,11 @@
         "last_commit_date": "2026-03-11 00:30:54 -0500",
         "last_commit_message": "chore: commit audit, crypto, and swift notification work",
         "code_age_days": 4
+      },
+      "docs": {
+        "overview": "Billing-aware API key broker for the Eidos forge toolchain \u2014 manages billing entity selection and consent",
+        "security_notes": "Accesses sensitive data: API keys, billing entities, authorization tokens. Manages API keys and billing selection. Sensitive \u2014 controls which billing entity pays for AI API calls.",
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/eidos-consent"
       }
     },
     "eidos-elt-forge": {
@@ -205,6 +285,14 @@
         "last_commit_date": "2026-03-11 01:24:37 -0500",
         "last_commit_message": "chore: module refactor, auditor improvements, learnings system",
         "code_age_days": 4
+      },
+      "docs": {
+        "overview": "Modular agentic framework for data pipelines \u2014 stateful workflow engine with medallion architecture",
+        "tools": {
+          "elt_forge_audit": "Audit a data daemon project for pattern compliance."
+        },
+        "security_notes": "Accesses sensitive data: database schemas, ETL configurations, data pipeline definitions. Accesses database schemas and can generate ETL pipeline code. Use only in data engineering contexts.",
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/elt-forge"
       }
     },
     "eidos-image-forge": {
@@ -223,6 +311,10 @@
         "last_commit_date": "2026-03-11 01:25:15 -0500",
         "last_commit_message": "chore: update dependencies",
         "code_age_days": 4
+      },
+      "docs": {
+        "overview": "AI image generation via Google Gemini \u2014 cover art, illustrations, icons, and image editing",
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/image-forge"
       }
     },
     "eidos-mail": {
@@ -245,6 +337,22 @@
         "last_commit_date": "2026-03-11 00:30:55 -0500",
         "last_commit_message": "chore: commit test-forge state",
         "code_age_days": 4
+      },
+      "docs": {
+        "overview": "Email management \u2014 inbox, search, read, send, reply, forward, and sync for personal email",
+        "tools": {
+          "inbox": "Fetch recent emails from the inbox.",
+          "read_email": "Read a single email by ID. Returns full body text.",
+          "send_email": "Send an email.",
+          "mark_read": "Mark one or more emails as read (or unread).",
+          "delete_email": "Soft-delete an email.",
+          "reply_email": "Reply to an email. Adds proper threading headers and quotes the original.",
+          "forward_email": "Forward an email to another recipient.",
+          "undelete_email": "Restore a soft-deleted email from trash.",
+          "sync_inbox": "Trigger IMAP sync to fetch new emails from the mail server."
+        },
+        "security_notes": "Accesses sensitive data: emails, contacts, personal communications. HIGH SENSITIVITY. Full email access \u2014 read, send, delete. Can compose and send emails on behalf of the user.",
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/eidos-mail"
       }
     },
     "eidos-test-forge": {
@@ -267,6 +375,17 @@
         "last_commit_date": "2026-03-11 01:25:17 -0500",
         "last_commit_message": "chore: commit test-forge state",
         "code_age_days": 4
+      },
+      "docs": {
+        "overview": "Point-and-test framework \u2014 probes HTTP, health, CLI, SQL, and MCP endpoints with iterative depth",
+        "tools": {
+          "whats_wrong": "Deep diagnosis \u2014 run test_this with full LLM intelligence, focused on finding problems.",
+          "test_these": "Test multiple targets at once. Good for checking a whole ecosystem.",
+          "playbooks": "List available testing playbooks and saved test suites.",
+          "read_notes": "Read the handoff letter and test suite left by the last robot."
+        },
+        "security_notes": "Accesses sensitive data: service endpoints, database connections, test results. Can probe live services and databases. Ensure it only targets intended environments.",
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/test-forge"
       }
     },
     "elt-forge": {
@@ -288,6 +407,14 @@
         "last_commit_date": "2026-03-11 01:24:37 -0500",
         "last_commit_message": "chore: module refactor, auditor improvements, learnings system",
         "code_age_days": 4
+      },
+      "docs": {
+        "overview": "Standalone ELT forge instance \u2014 same as eidos-elt-forge but with separate Python environment",
+        "tools": {
+          "elt_forge_audit": "Audit a data daemon project for pattern compliance."
+        },
+        "security_notes": "Accesses sensitive data: database schemas, ETL configurations. Same as eidos-elt-forge. Consider consolidating to avoid confusion.",
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/elt-forge"
       }
     },
     "github": {
@@ -314,6 +441,11 @@
         "url": "https://api.githubcopilot.com/mcp",
         "code_repo": "https://api.githubcopilot.com/mcp",
         "code_age_days": 0
+      },
+      "docs": {
+        "overview": "GitHub's official MCP server \u2014 repos, issues, PRs, projects, code search via Copilot OAuth",
+        "security_notes": "Accesses sensitive data: source code, issues, pull requests, project data. Full GitHub access via PAT. Can create repos, push code, merge PRs, write issues. Token in config has broad scope.",
+        "code_location": "https://api.githubcopilot.com/mcp"
       }
     },
     "helios": {
@@ -338,6 +470,11 @@
         "last_commit_date": "2026-03-01 17:04:02 -0600",
         "last_commit_message": "feat: cloud-ready hub \u2014 Postgres storage, Railway deployment",
         "code_age_days": 13
+      },
+      "docs": {
+        "overview": "Browser automation for AI agents \u2014 control logged-in browser sessions with clicks, screenshots, and navigation",
+        "security_notes": "Accesses sensitive data: browser sessions, cookies, page content, screenshots, credentials in forms. HIGH SENSITIVITY. Controls real browser with logged-in sessions. Can see passwords, cookies, and interact with any website.",
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/helios"
       }
     },
     "keeper": {
@@ -367,6 +504,11 @@
         "last_commit_date": "2026-03-01 21:01:57 -0600",
         "last_commit_message": "feat: add JWT token issuance and JWKS for platform auth",
         "code_age_days": 13
+      },
+      "docs": {
+        "overview": "Password management \u2014 search, retrieve, add, update, and retire credentials from a password vault",
+        "security_notes": "Accesses sensitive data: passwords, credentials, API keys, secret notes. CRITICAL SENSITIVITY. Full access to password vault. Can read, create, update, and delete credentials.",
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/eidos-vault"
       }
     },
     "outlook": {
@@ -390,6 +532,11 @@
         "last_commit_date": "2026-02-13 11:48:29 -0600",
         "last_commit_message": "Rewrite to instruction-based architecture with learning mechanism",
         "code_age_days": 30
+      },
+      "docs": {
+        "overview": "Microsoft Outlook email and calendar \u2014 read inbox, compose, reply, search, and check calendar from local cache",
+        "security_notes": "Accesses sensitive data: emails, calendar events, contacts, business communications. HIGH SENSITIVITY. Reads Outlook local cache \u2014 all business emails and calendar. Can compose and reply to emails.",
+        "code_location": "/Users/dshanklinbv/repos-personal/outlook-mcp"
       }
     },
     "pal": {
@@ -419,6 +566,11 @@
         "last_commit_date": "2025-12-15 17:07:31 +0000",
         "last_commit_message": "chore: sync version to config.py [skip ci]",
         "code_age_days": 89
+      },
+      "docs": {
+        "overview": "Provider Abstraction Layer \u2014 multi-LLM orchestration enabling Claude to consult GPT, Gemini, Grok, and others",
+        "security_notes": "Accesses sensitive data: code snippets sent to external LLMs, conversation context. Sends code and conversation context to external LLM providers (OpenAI, Google, etc.). Data leaves local environment.",
+        "code_location": "/Users/dshanklinbv/repos/pal-mcp-server"
       }
     },
     "railguey": {
@@ -449,6 +601,11 @@
         "last_commit_date": "2026-03-13 08:27:04 -0500",
         "last_commit_message": "Extend domain tool to update existing domains' target port",
         "code_age_days": 2
+      },
+      "docs": {
+        "overview": "Railway deployment management \u2014 deploy, rollback, logs, domains, variables, and service orchestration",
+        "security_notes": "Accesses sensitive data: deployment configs, environment variables, service credentials, TOTP secrets. Full Railway access \u2014 can deploy, rollback, delete projects, and read environment variables including secrets.",
+        "code_location": "/Users/dshanklinbv/repos-eidos-agi/railguey"
       }
     },
     "reeves-comms": {
@@ -472,6 +629,11 @@
         "last_commit_date": "2026-03-15 00:31:44 -0500",
         "last_commit_message": "feat: add self-report primitive and identity audit trail to reeves-comms",
         "code_age_days": 0
+      },
+      "docs": {
+        "overview": "Unified communications aggregator \u2014 search, thread, and surface high-attention items across all channels",
+        "security_notes": "Accesses sensitive data: communications, messages, email threads, attention items. Accesses aggregated communications from multiple channels. Contains business and personal messages.",
+        "code_location": "/Users/dshanklinbv/repos-personal/reeves"
       }
     },
     "reeves-global": {
@@ -494,6 +656,11 @@
         "last_commit_date": "2026-03-15 00:31:44 -0500",
         "last_commit_message": "feat: add self-report primitive and identity audit trail to reeves-comms",
         "code_age_days": 0
+      },
+      "docs": {
+        "overview": "Content publishing pipeline \u2014 article intake, drafting, editing, and publishing to multiple destinations",
+        "security_notes": "Accesses sensitive data: article content, publishing credentials, draft content. Can publish content to external destinations. Ensure articles are reviewed before pushing.",
+        "code_location": "/Users/dshanklinbv/repos-personal/reeves"
       }
     },
     "reeves-messages": {
@@ -517,6 +684,11 @@
         "last_commit_date": "2026-02-15 16:15:46 -0600",
         "last_commit_message": "Add CLAUDE.md for AI session guardrails",
         "code_age_days": 27
+      },
+      "docs": {
+        "overview": "Apple Messages (iMessage/SMS) management \u2014 conversations, search, drafts, identity resolution, and sweep",
+        "security_notes": "Accesses sensitive data: text messages, iMessages, contact identities, personal conversations. HIGH SENSITIVITY. Reads all Apple Messages. Can draft replies and manage message identities.",
+        "code_location": "/Users/dshanklinbv/repos-personal/reeves-messages"
       }
     },
     "reeves-view": {
@@ -532,6 +704,10 @@
       "risk_notes": "Low risk. Manages display views. No sensitive data access \u2014 just layout and rendering.",
       "installation": {
         "code_repo": "/Users/dshanklinbv/repos-aic/reeves-view"
+      },
+      "docs": {
+        "overview": "Always-on view daemon \u2014 push, pin, and restore named views with SSE real-time updates",
+        "code_location": "/Users/dshanklinbv/repos-aic/reeves-view"
       }
     },
     "rhea-diagrams": {
@@ -552,6 +728,10 @@
         "last_commit_date": "2026-02-23 16:41:34 -0600",
         "last_commit_message": "Add fix suggestions to review_layout issues",
         "code_age_days": 19
+      },
+      "docs": {
+        "overview": "AI-powered diagramming via Excalidraw \u2014 create, edit, export diagrams with brand themes and Mermaid import",
+        "code_location": "/Users/dshanklinbv/repos-personal/reeves-diagrams"
       }
     },
     "taskr": {
@@ -577,6 +757,21 @@
         "last_commit_date": "2026-02-27 00:47:50 -0600",
         "last_commit_message": "clean-sweep: add taskr platform implementation and dependencies",
         "code_age_days": 16
+      },
+      "docs": {
+        "overview": "Full-stack work management \u2014 tasks, devlogs, skillflows, governance, DNS, secrets (Knox), projects, and recon missions",
+        "tools": {
+          "github_project_create": "Create a GitHub Project v2.",
+          "github_project_add_item": "Add an issue or PR to a GitHub Project v2.",
+          "github_get_issue_id": "Get the node ID for a GitHub issue.",
+          "github_get_org_id": "Get the node ID for a GitHub organization or user.",
+          "github_project_close": "Close a GitHub Project v2.",
+          "github_project_reopen": "Reopen a closed GitHub Project v2.",
+          "taskr_project_items": "List project items with MINIMAL output to save context tokens.",
+          "taskr_pr_create": "Create a pull request with smart issue linking."
+        },
+        "security_notes": "Accesses sensitive data: task data, devlogs, secrets (Knox), DNS records, governance decisions, SQL queries. HIGH SENSITIVITY. Can execute SQL queries, manage secrets via Knox, modify DNS records, and approve governance decisions.",
+        "code_location": "/Users/dshanklinbv/repos-aic/taskr"
       }
     },
     "vercel": {
@@ -602,6 +797,11 @@
         "url": "https://mcp.vercel.com",
         "code_repo": "https://mcp.vercel.com",
         "code_age_days": 0
+      },
+      "docs": {
+        "overview": "Vercel deployment platform \u2014 project metadata, logs, and deployment status (read-only)",
+        "security_notes": "Accesses sensitive data: deployment logs, project metadata, environment info. Read-only access to Vercel projects and logs. OAuth-scoped. Low risk but exposes deployment details.",
+        "code_location": "https://mcp.vercel.com"
       }
     },
     "wrike": {
@@ -627,6 +827,11 @@
         "last_commit_date": "2026-02-27 00:48:07 -0600",
         "last_commit_message": "clean-sweep: refactor MCP server tools and handlers",
         "code_age_days": 16
+      },
+      "docs": {
+        "overview": "Wrike project management \u2014 tasks, comments, folders, spaces, and unified search across the AIC workspace",
+        "security_notes": "Accesses sensitive data: project tasks, client data, business comments, team assignments. Accesses AIC business Wrike workspace. Contains client project data, task assignments, and business communications.",
+        "code_location": "/Users/dshanklinbv/repos-aic/wrike-mcp"
       }
     }
   }

@@ -782,6 +782,98 @@ async function renderServerDetail(container, name) {
     container.appendChild(docSection);
   }
 
+  // Docs section
+  if (cat.docs) {
+    const docsSection = document.createElement('div');
+    docsSection.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px';
+
+    const docsTitle = document.createElement('div');
+    docsTitle.style.cssText = 'font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px';
+    docsTitle.textContent = 'Documentation';
+    docsSection.appendChild(docsTitle);
+
+    // Overview
+    if (cat.docs.overview && cat.docs.overview !== cat.summary) {
+      const overview = document.createElement('p');
+      overview.style.cssText = 'font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:12px';
+      overview.textContent = cat.docs.overview;
+      docsSection.appendChild(overview);
+    }
+
+    // Architecture
+    if (cat.docs.architecture) {
+      const archLabel = document.createElement('div');
+      archLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;margin-top:8px';
+      archLabel.textContent = 'Architecture';
+      const arch = document.createElement('p');
+      arch.style.cssText = 'font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:8px';
+      arch.textContent = cat.docs.architecture;
+      docsSection.append(archLabel, arch);
+    }
+
+    // Tools documentation
+    if (cat.docs.tools && Object.keys(cat.docs.tools).length > 0) {
+      const toolsLabel = document.createElement('div');
+      toolsLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent);margin-bottom:6px;margin-top:12px';
+      toolsLabel.textContent = `Tools (${Object.keys(cat.docs.tools).length})`;
+      docsSection.appendChild(toolsLabel);
+
+      for (const [toolName, toolDesc] of Object.entries(cat.docs.tools)) {
+        const toolRow = document.createElement('div');
+        toolRow.style.cssText = 'padding:6px 0;border-bottom:1px solid var(--border)';
+        const tn = document.createElement('code');
+        tn.style.cssText = 'font-size:12px;color:var(--accent);font-family:"SF Mono",Monaco,monospace';
+        tn.textContent = toolName;
+        const td = document.createElement('div');
+        td.style.cssText = 'font-size:12px;color:var(--text-dim);margin-top:2px;line-height:1.5';
+        td.textContent = toolDesc;
+        toolRow.append(tn, td);
+        docsSection.appendChild(toolRow);
+      }
+    }
+
+    // Data sources
+    if (cat.docs.data_sources && cat.docs.data_sources.length > 0) {
+      const dsLabel = document.createElement('div');
+      dsLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;margin-top:12px';
+      dsLabel.textContent = 'Data Sources';
+      docsSection.appendChild(dsLabel);
+      for (const ds of cat.docs.data_sources) {
+        const dsItem = document.createElement('div');
+        dsItem.style.cssText = 'font-size:12px;color:var(--text-dim);padding:2px 0;padding-left:12px';
+        dsItem.textContent = '\u2022 ' + ds;
+        docsSection.appendChild(dsItem);
+      }
+    }
+
+    // Security notes
+    if (cat.docs.security_notes) {
+      const secLabel = document.createElement('div');
+      secLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--red);margin-bottom:4px;margin-top:12px';
+      secLabel.textContent = 'Security Notes';
+      const secText = document.createElement('p');
+      secText.style.cssText = 'font-size:12px;color:var(--text-dim);line-height:1.6';
+      secText.textContent = cat.docs.security_notes;
+      docsSection.append(secLabel, secText);
+    }
+
+    // Dependencies
+    if (cat.docs.dependencies && cat.docs.dependencies.length > 0) {
+      const depLabel = document.createElement('div');
+      depLabel.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent);margin-bottom:4px;margin-top:12px';
+      depLabel.textContent = 'Dependencies';
+      docsSection.appendChild(depLabel);
+      for (const dep of cat.docs.dependencies) {
+        const depItem = document.createElement('div');
+        depItem.style.cssText = 'font-size:12px;color:var(--text-dim);padding:2px 0;padding-left:12px';
+        depItem.textContent = '\u2022 ' + dep;
+        docsSection.appendChild(depItem);
+      }
+    }
+
+    container.appendChild(docsSection);
+  }
+
   // Installation & Code section
   const inst = cat.installation || {};
   if (Object.keys(inst).length > 0) {
