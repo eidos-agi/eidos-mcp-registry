@@ -178,6 +178,246 @@ function renderDropZones(container) {
   }
 }
 
+// ── Scope Audit Panel ───────────────────────────────────────────
+
+const STATUS_ICONS = {
+  global_user: '\uD83C\uDF10',        // 🌐
+  global_project_only: '\u26A0\uFE0F', // ⚠️
+  needs_promote: '\uD83D\uDD34',       // 🔴
+  scoped: '\u2705',                     // ✅
+  unassigned_user: '\uD83D\uDFE1',     // 🟡
+  unassigned_orphan: '\u26AB',          // ⚫
+};
+
+const STATUS_COLORS = {
+  global_user: 'var(--accent)',
+  global_project_only: 'var(--orange)',
+  needs_promote: 'var(--red)',
+  scoped: 'var(--green)',
+  unassigned_user: 'var(--orange)',
+  unassigned_orphan: 'var(--text-dim)',
+};
+
+async function renderPromoteBanner(container) {
+  let audit, catalog;
+  try {
+    audit = await api.get('/scope-audit');
+  } catch { return; }
+  try {
+    const catData = await api.get('/server-catalog');
+    catalog = catData.servers || {};
+  } catch { catalog = {}; }
+
+  const { summary, servers } = audit;
+
+  // Header bar
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden';
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer';
+  header.addEventListener('click', () => {
+    body.style.display = body.style.display === 'none' ? '' : 'none';
+    chevron.textContent = body.style.display === 'none' ? '\u25B6' : '\u25BC';
+  });
+
+  const chevron = document.createElement('span');
+  chevron.style.cssText = 'color:var(--text-dim);font-size:10px;flex-shrink:0';
+  chevron.textContent = '\u25B6';
+
+  const headerTitle = document.createElement('span');
+  headerTitle.style.cssText = 'font-size:13px;font-weight:600;flex:1';
+  headerTitle.textContent = 'Scope Audit';
+
+  // Summary badges
+  const badgeRow = document.createElement('div');
+  badgeRow.style.cssText = 'display:flex;gap:6px;flex-shrink:0';
+
+  if (summary.needs_promote > 0) {
+    const b = document.createElement('span');
+    b.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(248,81,73,0.15);color:var(--red);font-weight:500';
+    b.textContent = `${summary.needs_promote} leaking`;
+    badgeRow.appendChild(b);
+  }
+  if (summary.properly_scoped > 0) {
+    const b = document.createElement('span');
+    b.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(63,185,80,0.15);color:var(--green);font-weight:500';
+    b.textContent = `${summary.properly_scoped} scoped`;
+    badgeRow.appendChild(b);
+  }
+  if (summary.global > 0) {
+    const b = document.createElement('span');
+    b.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:10px;background:var(--accent-dim);color:var(--accent);font-weight:500';
+    b.textContent = `${summary.global} global`;
+    badgeRow.appendChild(b);
+  }
+  if (summary.unassigned > 0) {
+    const b = document.createElement('span');
+    b.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg-hover);color:var(--text-dim);font-weight:500';
+    b.textContent = `${summary.unassigned} unassigned`;
+    badgeRow.appendChild(b);
+  }
+
+  // Promote All button in header
+  const promoteBtn = document.createElement('button');
+  promoteBtn.className = 'btn';
+  promoteBtn.style.cssText = 'font-size:11px;padding:3px 10px;flex-shrink:0';
+  if (summary.needs_promote > 0) {
+    promoteBtn.className = 'btn btn-primary';
+    promoteBtn.textContent = `Fix ${summary.needs_promote} leaking`;
+    promoteBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      promoteBtn.disabled = true;
+      promoteBtn.textContent = 'Promoting...';
+      try {
+        const result = await api.post('/promote/all');
+        const count = result.removed?.length || 0;
+        promoteBtn.textContent = `Fixed ${count}`;
+        promoteBtn.style.background = 'var(--green)';
+        import('./toast.js').then(m => m.showToast(`Promoted ${count} servers to project-only`, 'success'));
+        // Refresh the audit
+        setTimeout(() => loadData(), 1000);
+      } catch {
+        promoteBtn.textContent = 'Failed';
+        promoteBtn.disabled = false;
+      }
+    });
+  } else {
+    promoteBtn.textContent = 'All clean';
+    promoteBtn.disabled = true;
+  }
+
+  header.append(chevron, headerTitle, badgeRow, promoteBtn);
+  panel.appendChild(header);
+
+  // Body — detailed server list
+  const body = document.createElement('div');
+  body.style.cssText = 'display:none;border-top:1px solid var(--border)';
+
+  // Group servers by status for logical ordering
+  const order = ['needs_promote', 'unassigned_user', 'global_project_only', 'global_user', 'scoped', 'unassigned_orphan'];
+  const sorted = [...servers].sort((a, b) => {
+    const ai = order.indexOf(a.status);
+    const bi = order.indexOf(b.status);
+    if (ai !== bi) return ai - bi;
+    return a.server.localeCompare(b.server);
+  });
+
+  for (const srv of sorted) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:flex-start;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);font-size:12px';
+    if (srv.status === 'needs_promote') row.style.background = 'rgba(248,81,73,0.05)';
+
+    const icon = document.createElement('span');
+    icon.style.cssText = 'flex-shrink:0;width:20px;text-align:center;padding-top:1px';
+    icon.textContent = STATUS_ICONS[srv.status] || '\u2022';
+
+    const info = document.createElement('div');
+    info.style.cssText = 'flex:1;min-width:0';
+
+    const nameRow = document.createElement('div');
+    nameRow.style.cssText = 'display:flex;align-items:center;gap:8px';
+
+    const name = document.createElement('span');
+    name.style.cssText = 'font-weight:600;color:var(--text)';
+    name.textContent = srv.server;
+
+    const statusBadge = document.createElement('span');
+    statusBadge.style.cssText = `font-size:10px;padding:1px 6px;border-radius:3px;color:${STATUS_COLORS[srv.status] || 'var(--text-dim)'};border:1px solid ${STATUS_COLORS[srv.status] || 'var(--border)'}`;
+    statusBadge.textContent = srv.status_label;
+
+    const typeBadge = document.createElement('span');
+    typeBadge.className = 'type-badge';
+    typeBadge.textContent = srv.type;
+
+    nameRow.append(name, statusBadge, typeBadge);
+
+    const detail = document.createElement('div');
+    detail.style.cssText = 'color:var(--text-dim);margin-top:2px;line-height:1.5';
+    detail.textContent = srv.detail;
+
+    // Scope indicators
+    const scopes = document.createElement('div');
+    scopes.style.cssText = 'display:flex;gap:6px;margin-top:4px;flex-wrap:wrap';
+
+    if (srv.in_user_scope) {
+      const tag = document.createElement('span');
+      tag.style.cssText = 'font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(210,153,34,0.15);color:var(--orange)';
+      tag.textContent = '~/.claude.json';
+      scopes.appendChild(tag);
+    }
+    if (srv.in_universal) {
+      const tag = document.createElement('span');
+      tag.style.cssText = 'font-size:10px;padding:1px 6px;border-radius:3px;background:var(--accent-dim);color:var(--accent)';
+      tag.textContent = 'Global';
+      scopes.appendChild(tag);
+    }
+    for (const g of srv.groups) {
+      if (g.is_universal) continue;
+      const tag = document.createElement('span');
+      tag.style.cssText = 'font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(63,185,80,0.15);color:var(--green)';
+      tag.textContent = g.label;
+      scopes.appendChild(tag);
+    }
+    if (!srv.in_user_scope && !srv.groups.length) {
+      const tag = document.createElement('span');
+      tag.style.cssText = 'font-size:10px;padding:1px 6px;border-radius:3px;background:var(--bg-hover);color:var(--text-dim)';
+      tag.textContent = 'registry only';
+      scopes.appendChild(tag);
+    }
+
+    info.append(nameRow, detail, scopes);
+
+    // Catalog info (summary + risk_notes)
+    const catEntry = catalog[srv.server];
+    if (catEntry) {
+      const catInfo = document.createElement('div');
+      catInfo.style.cssText = 'margin-top:4px;font-size:11px;line-height:1.5';
+
+      if (catEntry.summary) {
+        const summaryEl = document.createElement('div');
+        summaryEl.style.cssText = 'color:var(--text);font-style:italic';
+        summaryEl.textContent = catEntry.summary;
+        catInfo.appendChild(summaryEl);
+      }
+
+      if (catEntry.risk_notes) {
+        const riskEl = document.createElement('div');
+        const isHigh = catEntry.risk_notes.toUpperCase().includes('HIGH') || catEntry.risk_notes.toUpperCase().includes('CRITICAL');
+        riskEl.style.cssText = `color:${isHigh ? 'var(--red)' : 'var(--text-dim)'};margin-top:2px`;
+        riskEl.textContent = catEntry.risk_notes;
+        catInfo.appendChild(riskEl);
+      }
+
+      info.appendChild(catInfo);
+    }
+
+    // Per-server promote button
+    if (srv.action === 'promote') {
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.style.cssText = 'font-size:10px;padding:2px 8px;flex-shrink:0;color:var(--red);border-color:var(--red)';
+      btn.textContent = 'Promote';
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = '...';
+        await api.post('/promote', { servers: [srv.server] });
+        btn.textContent = '\u2713';
+        btn.style.color = 'var(--green)';
+        btn.style.borderColor = 'var(--green)';
+      });
+      row.append(icon, info, btn);
+    } else {
+      row.append(icon, info);
+    }
+
+    body.appendChild(row);
+  }
+
+  panel.appendChild(body);
+  container.appendChild(panel);
+}
+
 // ── Confirmation dialog ─────────────────────────────────────────
 
 function showConfirmDialog(serverName, groupKey, group) {
@@ -238,6 +478,9 @@ export function renderServersView() {
 
   // Global section
   renderGlobalSection(rightCol);
+
+  // Scope audit panel — shows every server's scope status
+  renderPromoteBanner(rightCol);  // async, renders when data arrives
 
   // All non-universal servers
   const universalSet = new Set(state.groups.__universal__?.servers || []);

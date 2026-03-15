@@ -1054,6 +1054,46 @@ footer {
   border: 1px solid rgba(210, 153, 34, 0.3);
   border-radius: var(--radius);
 }
+
+/* ── Config Diff Viewer ─────────────────────────────────────── */
+.diff-container {
+  font-family: "SF Mono", Monaco, monospace;
+  font-size: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  margin: 8px 0;
+}
+.diff-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.diff-header:hover { background: var(--bg-hover); }
+.diff-body { display: none; padding: 0; }
+.diff-body.open { display: block; }
+.diff-line {
+  padding: 1px 12px;
+  white-space: pre;
+  line-height: 1.6;
+}
+.diff-add { background: rgba(63,185,80,0.15); color: var(--green); }
+.diff-remove { background: rgba(248,81,73,0.15); color: var(--red); }
+.diff-unchanged { color: var(--text-dim); }
+.diff-new-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--green);
+  color: #000;
+}
 .deploy-servers {
   margin-top: 4px;
   display: flex;

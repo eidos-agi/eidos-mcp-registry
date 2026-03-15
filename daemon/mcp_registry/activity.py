@@ -13,7 +13,7 @@ DATA_DIR = Path.home() / ".eidos-mcp-registry"
 ACTIVITY_FILE = DATA_DIR / "activity.json"
 
 # Event types
-EVENT_TYPES = {"assign", "unassign", "deploy", "config_change", "scan", "gitignore_bulk"}
+EVENT_TYPES = {"assign", "unassign", "deploy", "config_change", "scan", "gitignore_bulk", "webhook", "webhook_config"}
 
 _events: deque = deque(maxlen=100)
 _loaded = False

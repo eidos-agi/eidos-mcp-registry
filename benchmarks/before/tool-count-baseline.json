@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-03-15T00:00:00Z",
+  "state": "all_27_servers_in_universal",
+  "servers": 27,
+  "total_tools": 469,
+  "top_5_by_tools": {
+    "taskr": 102,
+    "helios": 41,
+    "github": 38,
+    "rhea-diagrams": 37,
+    "railguey": 36
+  },
+  "token_estimate": {
+    "tokens_per_tool_avg": 250,
+    "total_tool_schema_tokens": 117250,
+    "cost_per_message_usd": 0.352,
+    "monthly_cost_100_msgs_day": 1055
+  },
+  "note": "469 tools from 27 MCP servers, all in __universal__ scope. Every context window in every repo loads all 469 tool definitions."
+}

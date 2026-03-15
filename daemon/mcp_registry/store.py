@@ -231,6 +231,54 @@ class RegistryStore:
                 assigned.update(g["servers"])
             return [s for s in self._data["servers"] if s not in assigned]
 
+    # ── webhook ────────────────────────────────────────────────────
+
+    def set_webhook(self, group: str, url: str) -> bool:
+        """Set a webhook URL for deploy notifications on a group."""
+        with self._lock:
+            if group not in self._data["groups"]:
+                return False
+            self._data["groups"][group]["webhook_url"] = url
+            self._save()
+        self._notify("webhook_set", {"group": group})
+        return True
+
+    def get_webhook(self, group: str) -> str | None:
+        """Get the webhook URL for a group, or None if not set."""
+        with self._lock:
+            g = self._data["groups"].get(group, {})
+            return g.get("webhook_url")
+
+    def delete_webhook(self, group: str) -> bool:
+        """Remove the webhook URL from a group."""
+        with self._lock:
+            if group not in self._data["groups"]:
+                return False
+            self._data["groups"][group].pop("webhook_url", None)
+            self._save()
+        self._notify("webhook_deleted", {"group": group})
+        return True
+
+    # ── dependencies ──────────────────────────────────────────────
+
+    def set_dependencies(self, server_name: str, deps: list[str]) -> bool:
+        """Set the depends_on list for a server."""
+        with self._lock:
+            if server_name not in self._data["servers"]:
+                return False
+            self._data["servers"][server_name]["depends_on"] = list(deps)
+            self._save()
+        self._notify("dependencies_changed", {"server": server_name})
+        return True
+
+    def get_dependencies(self, server_name: str) -> list[str] | None:
+        """Get the depends_on list for a server, or None if server not found."""
+        with self._lock:
+            srv = self._data["servers"].get(server_name)
+            if srv is None:
+                return None
+            return list(srv.get("depends_on", []))
+
     # ── repo overrides ───────────────────────────────────────────
 
     def set_override(self, repo: str, add: list[str] | None = None,

@@ -19,8 +19,9 @@ from mcp_registry.events import AsyncEventBus, sse_generator, wire_store_to_bus
 from mcp_registry.scanner import full_scan
 from mcp_registry.health import health_monitor
 from mcp_registry.deployer import preview as deploy_preview, deploy as deploy_execute
-from mcp_registry.deployer import check_gitignore_status, add_gitignore_bulk
+from mcp_registry.deployer import check_gitignore_status, add_gitignore_bulk, remove_from_user_scope
 from mcp_registry import activity
+from mcp_registry import webhook
 from mcp_registry import deploy_history
 from mcp_registry.renderer import REGISTRY_HTML
 
@@ -102,6 +103,12 @@ class GroupServerConfigRequest(BaseModel):
     server: str
     config: dict  # e.g. {"env": {"SUPABASE_URL": "https://staging.supabase.co"}}
 
+class DependenciesRequest(BaseModel):
+    depends_on: list[str]
+
+class WebhookRequest(BaseModel):
+    url: str
+
 
 # ── HTML ─────────────────────────────────────────────────────────
 
@@ -115,6 +122,18 @@ async def index():
 @app.get("/health")
 async def health():
     return {"status": "ok", "servers": _store.server_count(), "groups": _store.group_count()}
+
+
+# ── Server Catalog ──────────────────────────────────────────────
+
+@app.get("/server-catalog")
+async def get_server_catalog():
+    """Return the metadata catalog for all known MCP servers."""
+    catalog_path = Path(__file__).parent / "server_catalog.json"
+    if catalog_path.exists():
+        with open(catalog_path) as f:
+            return json.load(f)
+    return JSONResponse({"error": "Catalog not found"}, status_code=404)
 
 
 # ── Servers ──────────────────────────────────────────────────────
@@ -140,6 +159,25 @@ async def update_server(name: str, body: dict):
     _store.upsert_server(name, body)
     activity.log_event("config_change", {"server": name})
     return {"ok": True, "server": name}
+
+
+# ── Dependencies ─────────────────────────────────────────────────
+
+@app.put("/servers/{name}/dependencies")
+async def set_dependencies(name: str, req: DependenciesRequest):
+    ok = _store.set_dependencies(name, req.depends_on)
+    if not ok:
+        return JSONResponse({"error": "Server not found"}, status_code=404)
+    activity.log_event("dependencies_changed", {"server": name, "depends_on": req.depends_on})
+    return {"ok": True, "server": name, "depends_on": req.depends_on}
+
+
+@app.get("/servers/{name}/dependencies")
+async def get_dependencies(name: str):
+    deps = _store.get_dependencies(name)
+    if deps is None:
+        return JSONResponse({"error": "Server not found"}, status_code=404)
+    return {"server": name, "depends_on": deps}
 
 
 # ── Groups ───────────────────────────────────────────────────────
@@ -259,13 +297,23 @@ async def deploy_preview_endpoint():
                     "action": c["action"],
                     "servers": c["servers"],
                     "group": c["group"],
+                    "content": c["content"],
+                    "existing_content": c.get("existing_content"),
                     "gitignored": c.get("gitignored", False),
                     "unmanaged_kept": c.get("unmanaged_kept", []),
                     "servers_added": c.get("servers_added", []),
                     "servers_updated": c.get("servers_updated", []),
                     "servers_removed": c.get("servers_removed", []),
+                    "unmet_dependencies": c.get("unmet_dependencies", {}),
                   } for path, c in changes.items()},
     }
+
+
+def _get_groups_from_results(results: dict) -> list[str]:
+    """Extract unique group keys from deploy results (used when deploying all)."""
+    # Deploy results don't carry group info, but we can infer from the store
+    # For the webhook use case, the caller should pass explicit groups.
+    return []
 
 
 @app.post("/deploy")
@@ -297,11 +345,19 @@ async def deploy_endpoint(req: DeployRequest | None = None):
         results = await loop.run_in_executor(
             None, deploy_execute, _store, on_progress, selected_groups
         )
+        written_count = len(results.get("written", []))
+        error_count = len(results.get("errors", []))
         activity.log_event("deploy", {
             "groups": selected_groups,
-            "written": len(results.get("written", [])),
-            "errors": len(results.get("errors", [])),
+            "written": written_count,
+            "errors": error_count,
         })
+
+        # Fire webhooks for each deployed group
+        deployed_groups = selected_groups or _get_groups_from_results(results)
+        for gk in (deployed_groups or []):
+            webhook.notify_deploy(_store, gk, written_count, error_count)
+
         return results
 
 
@@ -363,6 +419,190 @@ async def add_gitignore(group_key: str):
 async def get_gitignore_status(group_key: str):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, check_gitignore_status, _store, group_key)
+
+
+# ── User Scope Management ────────────────────────────────────────
+
+
+@app.get("/scope-audit")
+async def scope_audit():
+    """Full audit of every server's scope status across all layers."""
+    import json as _json
+    snapshot = _store.snapshot()
+    all_servers = snapshot["servers"]
+    groups = snapshot["groups"]
+    universal = set(groups.get("__universal__", {}).get("servers", []))
+
+    # Read user scope
+    claude_json = Path.home() / ".claude.json"
+    user_scope_servers = set()
+    if claude_json.exists():
+        try:
+            with open(claude_json) as f:
+                user_data = _json.load(f)
+            user_scope_servers = set(user_data.get("mcpServers", {}).keys())
+        except (ValueError, OSError):
+            pass
+
+    # Build per-server audit
+    audit = []
+    for name in sorted(all_servers.keys()):
+        # Which groups is this server in?
+        assigned_groups = []
+        for gk, g in groups.items():
+            if name in (g.get("servers") or []):
+                assigned_groups.append({
+                    "key": gk,
+                    "label": g.get("label", gk),
+                    "is_universal": gk == "__universal__",
+                })
+
+        in_user_scope = name in user_scope_servers
+        in_universal = name in universal
+        in_groups = [g for g in assigned_groups if not g["is_universal"]]
+
+        # Determine scope status
+        if in_universal and in_user_scope:
+            status = "global_user"
+            status_label = "Global + User Scope"
+            action = "none"
+            detail = "Available everywhere via both user scope and project .mcp.json. This is correct for global servers."
+        elif in_universal and not in_user_scope:
+            status = "global_project_only"
+            status_label = "Global (project-only)"
+            action = "warn"
+            detail = "In universal group but missing from ~/.claude.json. Repos without .mcp.json won't see it."
+        elif in_groups and in_user_scope:
+            status = "needs_promote"
+            status_label = "Leaking to all projects"
+            action = "promote"
+            group_names = ", ".join(g["label"] for g in in_groups)
+            detail = f"Assigned to {group_names} but still in ~/.claude.json user scope. Visible in EVERY project, defeating scoping."
+        elif in_groups and not in_user_scope:
+            status = "scoped"
+            status_label = "Properly scoped"
+            action = "none"
+            group_names = ", ".join(g["label"] for g in in_groups)
+            detail = f"Only delivered to: {group_names}. Not in user scope. This is correct."
+        elif not assigned_groups:
+            if in_user_scope:
+                status = "unassigned_user"
+                status_label = "Unassigned (user scope)"
+                action = "assign"
+                detail = "Not assigned to any group. Still in ~/.claude.json, visible everywhere. Assign to a group or add to Global."
+            else:
+                status = "unassigned_orphan"
+                status_label = "Unassigned (orphaned)"
+                action = "assign"
+                detail = "Not assigned to any group and not in user scope. Only exists in registry. Assign to a group to activate."
+        else:
+            status = "unknown"
+            status_label = "Unknown"
+            action = "review"
+            detail = "Unexpected state."
+
+        audit.append({
+            "server": name,
+            "status": status,
+            "status_label": status_label,
+            "action": action,
+            "detail": detail,
+            "in_user_scope": in_user_scope,
+            "in_universal": in_universal,
+            "groups": assigned_groups,
+            "type": all_servers[name].get("type", "stdio"),
+            "health": all_servers[name].get("health", "unknown"),
+        })
+
+    # Summary counts
+    summary = {
+        "total": len(audit),
+        "properly_scoped": len([a for a in audit if a["status"] == "scoped"]),
+        "needs_promote": len([a for a in audit if a["status"] == "needs_promote"]),
+        "global": len([a for a in audit if a["status"].startswith("global")]),
+        "unassigned": len([a for a in audit if a["status"].startswith("unassigned")]),
+    }
+
+    return {"summary": summary, "servers": audit}
+
+
+class PromoteRequest(BaseModel):
+    servers: list[str]
+
+
+@app.post("/promote")
+async def promote_to_project_scope(req: PromoteRequest):
+    """Remove servers from ~/.claude.json user scope.
+
+    After deploying to project .mcp.json, servers should be removed from
+    user scope so they only appear in the right project context.
+    """
+    result = remove_from_user_scope(req.servers)
+    if "error" in result:
+        return JSONResponse({"error": result["error"]}, status_code=500)
+    if result["removed"]:
+        activity.log_event("promote", {
+            "removed_from_user_scope": result["removed"],
+            "count": len(result["removed"]),
+        })
+    return result
+
+
+@app.post("/promote/all")
+async def promote_all_assigned():
+    """Remove ALL group-assigned servers from user scope.
+
+    Keeps only __universal__ servers in ~/.claude.json.
+    Everything else should live in project .mcp.json only.
+    """
+    snapshot = _store.snapshot()
+    universal = set(snapshot["groups"].get("__universal__", {}).get("servers", []))
+    all_assigned = set()
+    for key, group in snapshot["groups"].items():
+        if key == "__universal__":
+            continue
+        all_assigned.update(group.get("servers", []))
+
+    # Only remove servers that are assigned to non-universal groups
+    to_remove = sorted(all_assigned - universal)
+    if not to_remove:
+        return {"removed": [], "message": "No servers to promote"}
+
+    result = remove_from_user_scope(to_remove)
+    if "error" in result:
+        return JSONResponse({"error": result["error"]}, status_code=500)
+    if result["removed"]:
+        activity.log_event("promote", {
+            "removed_from_user_scope": result["removed"],
+            "count": len(result["removed"]),
+        })
+    return result
+
+
+# ── Webhooks ─────────────────────────────────────────────────────
+
+@app.put("/groups/{group_key}/webhook")
+async def set_webhook(group_key: str, req: WebhookRequest):
+    ok = _store.set_webhook(group_key, req.url)
+    if not ok:
+        return JSONResponse({"error": "Group not found"}, status_code=404)
+    activity.log_event("webhook_config", {"group": group_key, "action": "set", "url": req.url})
+    return {"ok": True, "group": group_key, "webhook_url": req.url}
+
+
+@app.get("/groups/{group_key}/webhook")
+async def get_webhook(group_key: str):
+    url = _store.get_webhook(group_key)
+    return {"group": group_key, "webhook_url": url}
+
+
+@app.delete("/groups/{group_key}/webhook")
+async def delete_webhook(group_key: str):
+    ok = _store.delete_webhook(group_key)
+    if not ok:
+        return JSONResponse({"error": "Group not found"}, status_code=404)
+    activity.log_event("webhook_config", {"group": group_key, "action": "removed"})
+    return {"ok": True, "group": group_key}
 
 
 # ── SSE ──────────────────────────────────────────────────────────

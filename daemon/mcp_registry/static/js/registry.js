@@ -40,6 +40,7 @@ export const api = {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   }).then(r => r.json()),
+  delete: (path) => fetch(path, { method: 'DELETE' }).then(r => r.json()),
 };
 
 // ── SSE ──────────────────────────────────────────────────────────

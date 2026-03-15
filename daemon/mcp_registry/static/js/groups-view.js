@@ -24,6 +24,122 @@ function hasSecretKeys(env) {
   );
 }
 
+// ── Diff Viewer ──────────────────────────────────────────────────
+
+/**
+ * Compute line-by-line diff between two arrays of strings.
+ * Returns array of {type: 'add'|'remove'|'unchanged', text: string}.
+ * Uses a simple LCS-based approach.
+ */
+function computeDiff(oldLines, newLines) {
+  const m = oldLines.length;
+  const n = newLines.length;
+
+  // Build LCS table
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (oldLines[i - 1] === newLines[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+
+  // Backtrack to produce diff
+  const result = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      result.push({ type: 'unchanged', text: oldLines[i - 1] });
+      i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      result.push({ type: 'add', text: newLines[j - 1] });
+      j--;
+    } else {
+      result.push({ type: 'remove', text: oldLines[i - 1] });
+      i--;
+    }
+  }
+  result.reverse();
+  return result;
+}
+
+/**
+ * Render a collapsible diff view for a single repo's .mcp.json.
+ * @param {object|null} existing - Current file content (null if new file)
+ * @param {object} proposed - Proposed file content after deploy
+ * @param {string} repoName - Display name for the repo
+ * @returns {HTMLElement}
+ */
+function renderDiffView(existing, proposed, repoName) {
+  const container = document.createElement('div');
+  container.className = 'diff-container';
+
+  const header = document.createElement('div');
+  header.className = 'diff-header';
+
+  const chevron = document.createElement('span');
+  chevron.textContent = '\u25B6';
+  chevron.style.transition = 'transform 0.15s';
+
+  const label = document.createElement('span');
+  label.textContent = repoName;
+
+  header.append(chevron, label);
+
+  const isNewFile = existing === null || existing === undefined;
+  if (isNewFile) {
+    const badge = document.createElement('span');
+    badge.className = 'diff-new-badge';
+    badge.textContent = 'new file';
+    header.appendChild(badge);
+  }
+
+  const body = document.createElement('div');
+  body.className = 'diff-body';
+
+  const oldText = isNewFile ? '' : JSON.stringify(existing, null, 2);
+  const newText = JSON.stringify(proposed, null, 2);
+  const oldLines = isNewFile ? [] : oldText.split('\n');
+  const newLines = newText.split('\n');
+
+  if (isNewFile) {
+    // All lines are additions
+    for (const line of newLines) {
+      const el = document.createElement('div');
+      el.className = 'diff-line diff-add';
+      el.textContent = '+ ' + line;
+      body.appendChild(el);
+    }
+  } else {
+    const diff = computeDiff(oldLines, newLines);
+    for (const entry of diff) {
+      const el = document.createElement('div');
+      if (entry.type === 'add') {
+        el.className = 'diff-line diff-add';
+        el.textContent = '+ ' + entry.text;
+      } else if (entry.type === 'remove') {
+        el.className = 'diff-line diff-remove';
+        el.textContent = '- ' + entry.text;
+      } else {
+        el.className = 'diff-line diff-unchanged';
+        el.textContent = '  ' + entry.text;
+      }
+      body.appendChild(el);
+    }
+  }
+
+  header.addEventListener('click', () => {
+    body.classList.toggle('open');
+    chevron.style.transform = body.classList.contains('open') ? 'rotate(90deg)' : '';
+  });
+
+  container.append(header, body);
+  return container;
+}
+
 // ── Groups List View ─────────────────────────────────────────────
 
 function renderGlobalPinned(container) {
@@ -426,6 +542,118 @@ async function renderDeployHistory(container, groupKey) {
   }
 }
 
+async function renderWebhookConfig(container, groupKey) {
+  const section = document.createElement('div');
+  section.className = 'gc-section';
+  section.style.marginTop = '16px';
+
+  const title = document.createElement('div');
+  title.className = 'gc-section-title';
+  title.textContent = 'Webhook Notifications';
+  section.appendChild(title);
+
+  const desc = document.createElement('div');
+  desc.style.cssText = 'font-size:12px;color:var(--text-dim);margin-bottom:8px';
+  desc.textContent = 'Receive a POST notification when deploys succeed or fail.';
+  section.appendChild(desc);
+
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:8px;align-items:center';
+
+  const input = document.createElement('input');
+  input.type = 'url';
+  input.placeholder = 'https://example.com/webhook';
+  input.style.cssText = 'flex:1;padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-card);color:var(--text);font-size:13px';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn';
+  saveBtn.textContent = 'Save';
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'btn';
+  removeBtn.textContent = 'Remove';
+  removeBtn.style.display = 'none';
+
+  // Load current webhook
+  try {
+    const data = await api.get(`/groups/${encodeURIComponent(groupKey)}/webhook`);
+    if (data.webhook_url) {
+      input.value = data.webhook_url;
+      removeBtn.style.display = '';
+    }
+  } catch (_e) { /* ignore */ }
+
+  saveBtn.addEventListener('click', async () => {
+    const url = input.value.trim();
+    if (!url) return;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+    try {
+      await api.put(`/groups/${encodeURIComponent(groupKey)}/webhook`, { url });
+      saveBtn.textContent = 'Saved';
+      removeBtn.style.display = '';
+      showToast('Webhook saved', 'success');
+      setTimeout(() => { saveBtn.textContent = 'Save'; saveBtn.disabled = false; }, 2000);
+    } catch (_e) {
+      saveBtn.textContent = 'Error';
+      saveBtn.disabled = false;
+    }
+  });
+
+  removeBtn.addEventListener('click', async () => {
+    removeBtn.disabled = true;
+    removeBtn.textContent = 'Removing...';
+    try {
+      await api.delete(`/groups/${encodeURIComponent(groupKey)}/webhook`);
+      input.value = '';
+      removeBtn.style.display = 'none';
+      showToast('Webhook removed', 'success');
+    } catch (_e) {
+      removeBtn.textContent = 'Error';
+    }
+    removeBtn.disabled = false;
+    removeBtn.textContent = 'Remove';
+  });
+
+  row.append(input, saveBtn, removeBtn);
+  section.appendChild(row);
+  container.appendChild(section);
+}
+
+function renderUnmetDependencies(container, groupKey, universalServers, assignedServers) {
+  const effectiveSet = new Set([...universalServers, ...assignedServers]);
+  const warnings = [];
+
+  for (const srvName of effectiveSet) {
+    const srv = state.servers[srvName];
+    if (!srv || !srv.depends_on || srv.depends_on.length === 0) continue;
+    const missing = srv.depends_on.filter(dep => !effectiveSet.has(dep));
+    if (missing.length > 0) {
+      warnings.push({ server: srvName, missing });
+    }
+  }
+
+  if (warnings.length === 0) return;
+
+  for (const warn of warnings) {
+    const banner = document.createElement('div');
+    banner.className = 'gitignore-banner';
+    banner.style.borderColor = 'var(--orange)';
+    banner.style.background = 'rgba(255, 165, 0, 0.08)';
+    banner.style.marginBottom = '8px';
+
+    const icon = document.createElement('span');
+    icon.textContent = '\u26A0\uFE0F';
+    icon.style.marginRight = '8px';
+
+    const text = document.createElement('span');
+    text.textContent = `${warn.server} depends on ${warn.missing.join(', ')} which ${warn.missing.length === 1 ? 'is' : 'are'} not in this group`;
+
+    banner.append(icon, text);
+    container.appendChild(banner);
+  }
+}
+
 async function renderGroupDetail(container, groupKey) {
   const group = state.groups[groupKey];
   if (!group) return;
@@ -512,11 +740,62 @@ async function renderGroupDetail(container, groupKey) {
   }
   container.appendChild(assignedSec);
 
+  // Unmet dependency warnings
+  renderUnmetDependencies(container, groupKey, universalServers, assignedServers);
+
   // Available servers
   renderAvailableServers(container, groupKey);
 
+  // Preview changes button
+  const previewSection = document.createElement('div');
+  previewSection.style.marginTop = '16px';
+  const previewBtn = document.createElement('button');
+  previewBtn.className = 'btn';
+  previewBtn.textContent = 'Preview changes';
+  previewBtn.addEventListener('click', async () => {
+    previewBtn.disabled = true;
+    previewBtn.textContent = 'Loading preview...';
+    try {
+      const preview = await api.post('/deploy/preview');
+      const groupFiles = Object.entries(preview.files || {})
+        .filter(([, info]) => info.group === groupKey);
+
+      // Clear previous diff views
+      const existingDiffs = previewSection.querySelectorAll('.diff-container');
+      existingDiffs.forEach(el => el.remove());
+
+      if (groupFiles.length === 0) {
+        const noChanges = document.createElement('div');
+        noChanges.style.cssText = 'padding:12px;color:var(--text-dim);font-size:13px';
+        noChanges.textContent = 'No pending changes for this group.';
+        previewSection.appendChild(noChanges);
+      } else {
+        for (const [filePath, info] of groupFiles.sort((a, b) => a[0].localeCompare(b[0]))) {
+          const parts = filePath.split('/');
+          const repoName = parts[parts.length - 2];
+          const diffEl = renderDiffView(
+            info.existing_content || null,
+            info.content,
+            repoName
+          );
+          previewSection.appendChild(diffEl);
+        }
+      }
+      previewBtn.textContent = 'Preview changes';
+      previewBtn.disabled = false;
+    } catch (_err) {
+      previewBtn.textContent = 'Preview failed';
+      previewBtn.disabled = false;
+    }
+  });
+  previewSection.appendChild(previewBtn);
+  container.appendChild(previewSection);
+
   // Deploy button
   renderDeployButton(container, groupKey);
+
+  // Webhook config
+  await renderWebhookConfig(container, groupKey);
 
   // Deploy history
   await renderDeployHistory(container, groupKey);
@@ -696,6 +975,16 @@ function renderDeployGroups() {
       ab.textContent = repo.action;
       row.append(rn, ab);
       repoList.appendChild(row);
+
+      // Diff view for this repo (collapsed by default)
+      if (repo.content || repo.existing_content !== undefined) {
+        const diffEl = renderDiffView(
+          repo.existing_content || null,
+          repo.content,
+          repo.repoName
+        );
+        repoList.appendChild(diffEl);
+      }
     }
 
     toggle.addEventListener('click', () => {
@@ -733,6 +1022,25 @@ function renderDeployGroups() {
       warn.className = 'deploy-warning';
       warn.textContent = `\u26A0 ${data.notIgnored} repo${data.notIgnored > 1 ? 's' : ''} don\u2019t have .mcp.json in .gitignore \u2014 deploy will create dirty working trees.`;
       card.appendChild(warn);
+    }
+
+    // Unmet dependency warnings (aggregated across repos in this group)
+    const groupUnmetDeps = {};
+    for (const repo of data.repos) {
+      const unmet = repo.unmet_dependencies || {};
+      for (const [srv, missing] of Object.entries(unmet)) {
+        if (!groupUnmetDeps[srv]) groupUnmetDeps[srv] = new Set();
+        for (const m of missing) groupUnmetDeps[srv].add(m);
+      }
+    }
+    if (Object.keys(groupUnmetDeps).length > 0 && gState === 'pending') {
+      for (const [srv, missingSet] of Object.entries(groupUnmetDeps)) {
+        const warn = document.createElement('div');
+        warn.className = 'deploy-warning';
+        warn.style.borderColor = 'var(--orange)';
+        warn.textContent = `\u26A0 ${srv} depends on ${[...missingSet].join(', ')} \u2014 not assigned to this group`;
+        card.appendChild(warn);
+      }
     }
 
     card.append(toggle, repoList);

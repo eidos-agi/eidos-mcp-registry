@@ -179,17 +179,29 @@ def preview(store) -> dict:
             servers_added = sorted(managed_names - existing_server_names)
             servers_updated = sorted(managed_names & existing_server_names)
 
+            # Check for unmet dependencies
+            effective_set = set(effective)
+            unmet_dependencies = {}
+            for srv_name in effective:
+                srv = all_servers.get(srv_name, {})
+                deps = srv.get("depends_on", [])
+                missing = [d for d in deps if d not in effective_set]
+                if missing:
+                    unmet_dependencies[srv_name] = missing
+
             changes[mcp_path] = {
                 "repo": repo,
                 "group": group_key,
                 "servers": effective,
                 "content": final,
+                "existing_content": existing,
                 "action": "update" if existing else "create",
                 "gitignored": gitignored,
                 "unmanaged_kept": unmanaged_kept,
                 "servers_added": servers_added,
                 "servers_updated": servers_updated,
                 "servers_removed": servers_removed,
+                "unmet_dependencies": unmet_dependencies,
             }
 
     return changes
@@ -227,12 +239,61 @@ def deploy(store, on_progress=None, only_groups: list[str] | None = None) -> dic
             results["errors"].append({"path": mcp_path, "error": str(e)})
             logger.error("Failed to write %s: %s", mcp_path, e)
 
-    # NOTE: We intentionally do NOT remove servers from user scope during deploy.
-    # That's a destructive, hard-to-reverse action. The user should do that
-    # manually once they've verified their group assignments are correct.
-    # Future: add a separate "Promote" action with explicit confirmation.
-
     return results
+
+
+def remove_from_user_scope(server_names: list[str]) -> dict:
+    """Remove servers from ~/.claude.json user scope.
+
+    After deploying servers to project-scope .mcp.json, they should be
+    removed from user scope so Claude Code only sees them in the right
+    project context. Servers that stay in user scope are visible EVERYWHERE
+    regardless of project .mcp.json — defeating the purpose of scoping.
+
+    Returns:
+        {"removed": [...], "not_found": [...], "backed_up": path}
+    """
+    claude_json = Path.home() / ".claude.json"
+    if not claude_json.exists():
+        return {"removed": [], "not_found": list(server_names), "backed_up": None}
+
+    try:
+        with open(claude_json) as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logger.error("Failed to read ~/.claude.json: %s", e)
+        return {"error": str(e)}
+
+    mcp_servers = data.get("mcpServers", {})
+    removed = []
+    not_found = []
+
+    for name in server_names:
+        if name in mcp_servers:
+            del mcp_servers[name]
+            removed.append(name)
+        else:
+            not_found.append(name)
+
+    if not removed:
+        return {"removed": [], "not_found": not_found, "backed_up": None}
+
+    # Backup before modifying
+    backup_path = claude_json.with_suffix(".backup")
+    try:
+        backup_path.write_bytes(claude_json.read_bytes())
+    except OSError:
+        pass
+
+    # Write updated file
+    tmp = claude_json.with_suffix(".tmp")
+    with open(tmp, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+    tmp.rename(claude_json)
+
+    logger.info("Removed %d servers from user scope: %s", len(removed), removed)
+    return {"removed": removed, "not_found": not_found, "backed_up": str(backup_path)}
 
 
 def check_gitignore_status(store, group_key: str) -> dict:

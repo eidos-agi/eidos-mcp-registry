@@ -4,3 +4,4 @@ dist/
 build/
 *.pyc
 .venv/
+*.DS_Store

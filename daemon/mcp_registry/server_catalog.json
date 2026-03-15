@@ -1,0 +1,350 @@
+{
+  "catalog_version": "1.0",
+  "generated_at": "2026-03-15T12:00:00Z",
+  "servers": {
+    "backlog": {
+      "summary": "Git-native task and project management via Backlog.md CLI, tracks tasks as markdown files in repos",
+      "source": "npm:backlog (CLI), https://github.com/MrLesk/Backlog.md",
+      "maintainer": "vendor",
+      "tool_count": 23,
+      "accesses_sensitive_data": false,
+      "sensitive_data_types": [],
+      "recommended_scope": "global",
+      "scope_rationale": "Task management is useful across all projects; the backlog data lives per-repo so no cross-project leakage",
+      "documentation_urls": [
+        "https://github.com/MrLesk/Backlog.md",
+        "https://www.npmjs.com/package/@radleta/backlog-md-mcp"
+      ],
+      "risk_notes": "Low risk. Reads/writes markdown files in the current repo only."
+    },
+    "cerebro-mcp": {
+      "summary": "Organizational knowledge base — remember, recall, and search across ADRs, SOPs, and topics",
+      "source": "pypi:cerebro-mcp (installed via pyenv shim)",
+      "maintainer": "internal",
+      "tool_count": 7,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["organizational knowledge", "architectural decisions", "SOPs"],
+      "recommended_scope": "global",
+      "scope_rationale": "Organizational memory is relevant across all projects; provides context for architectural decisions everywhere",
+      "documentation_urls": [],
+      "risk_notes": "Contains institutional knowledge and architectural decisions. Internal only."
+    },
+    "claude-resume": {
+      "summary": "Session recovery for Claude Code — find, inspect, and resume crashed or abandoned sessions",
+      "source": "https://github.com/eidos-agi/claude-resume, pypi:claude-resume",
+      "maintainer": "internal",
+      "tool_count": 15,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["session transcripts", "code context", "conversation history"],
+      "recommended_scope": "global",
+      "scope_rationale": "Session recovery is needed everywhere; reads local ~/.claude session data regardless of project",
+      "documentation_urls": [
+        "https://github.com/eidos-agi/claude-resume"
+      ],
+      "risk_notes": "Reads Claude Code session transcripts which may contain sensitive code and conversations from any project."
+    },
+    "context7": {
+      "summary": "Up-to-date library and framework documentation for LLMs, powered by Upstash",
+      "source": "https://mcp.context7.com/mcp (remote HTTP)",
+      "maintainer": "vendor",
+      "tool_count": 2,
+      "accesses_sensitive_data": false,
+      "sensitive_data_types": [],
+      "recommended_scope": "global",
+      "scope_rationale": "Documentation lookup is universally useful and contains no project-specific data",
+      "documentation_urls": [
+        "https://context7.com/",
+        "https://github.com/upstash/context7"
+      ],
+      "risk_notes": "Sends library names to Upstash servers for doc retrieval. No sensitive data transmitted. API key used for rate limits."
+    },
+    "director-daemon": {
+      "summary": "Autonomous orchestrator for recurring personal work — comms extraction, security monitoring, scheduling",
+      "source": "/Users/dshanklinbv/repos-personal/aic-director-daemon/mcp_server/server.py",
+      "maintainer": "internal",
+      "tool_count": 8,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["communications", "security alerts", "personal scheduling data"],
+      "recommended_scope": "global",
+      "scope_rationale": "Personal orchestration daemon relevant to all work contexts; aggregates comms and alerts",
+      "documentation_urls": [],
+      "risk_notes": "Accesses personal communications and security data. High sensitivity — internal only."
+    },
+    "eidos": {
+      "summary": "Eidos AGI platform knowledge base — CLI guides, railway guides, vault guides, and cross-service search",
+      "source": "/Users/dshanklinbv/repos-eidos-agi/eidos-mcp/eidos_mcp/server.py",
+      "maintainer": "internal",
+      "tool_count": 6,
+      "accesses_sensitive_data": false,
+      "sensitive_data_types": [],
+      "recommended_scope": "per-group",
+      "scope_rationale": "Only relevant to Eidos AGI projects; provides platform-specific documentation and search",
+      "documentation_urls": [],
+      "risk_notes": "Low risk. Read-only knowledge base for Eidos platform conventions and guides."
+    },
+    "eidos-book-forge": {
+      "summary": "Composable book publishing pipeline — markdown in, formatted books out",
+      "source": "/Users/dshanklinbv/repos-eidos-agi/book-forge/dist/mcp.js",
+      "maintainer": "internal",
+      "tool_count": 0,
+      "accesses_sensitive_data": false,
+      "sensitive_data_types": [],
+      "recommended_scope": "per-project",
+      "scope_rationale": "Only needed when working on book/publishing projects; no tools registered in current session",
+      "documentation_urls": [],
+      "risk_notes": "Low risk. Generates book artifacts from markdown content."
+    },
+    "eidos-consent": {
+      "summary": "Billing-aware API key broker for the Eidos forge toolchain — manages billing entity selection and consent",
+      "source": "/Users/dshanklinbv/repos-eidos-agi/eidos-consent/dist/mcp.js",
+      "maintainer": "internal",
+      "tool_count": 3,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["API keys", "billing entities", "authorization tokens"],
+      "recommended_scope": "per-group",
+      "scope_rationale": "Only needed for Eidos forge tools that require API key brokering; not relevant to non-Eidos projects",
+      "documentation_urls": [],
+      "risk_notes": "Manages API keys and billing selection. Sensitive — controls which billing entity pays for AI API calls."
+    },
+    "eidos-elt-forge": {
+      "summary": "Modular agentic framework for data pipelines — stateful workflow engine with medallion architecture",
+      "source": "/Users/dshanklinbv/repos-eidos-agi/elt-forge/mcp_server.py",
+      "maintainer": "internal",
+      "tool_count": 0,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["database schemas", "ETL configurations", "data pipeline definitions"],
+      "recommended_scope": "per-project",
+      "scope_rationale": "Only relevant when building data pipelines; accesses database schemas and ETL configs",
+      "documentation_urls": [],
+      "risk_notes": "Accesses database schemas and can generate ETL pipeline code. Use only in data engineering contexts."
+    },
+    "eidos-image-forge": {
+      "summary": "AI image generation via Google Gemini — cover art, illustrations, icons, and image editing",
+      "source": "/Users/dshanklinbv/repos-eidos-agi/image-forge/dist/mcp.js",
+      "maintainer": "internal",
+      "tool_count": 4,
+      "accesses_sensitive_data": false,
+      "sensitive_data_types": [],
+      "recommended_scope": "per-group",
+      "scope_rationale": "Image generation is useful across creative/design projects but not needed for pure backend work",
+      "documentation_urls": [],
+      "risk_notes": "Sends prompts to Google Gemini for image generation. Generated images stored locally. API costs apply."
+    },
+    "eidos-mail": {
+      "summary": "Email management — inbox, search, read, send, reply, forward, and sync for personal email",
+      "source": "/Users/dshanklinbv/repos-eidos-agi/eidos-mail/mcp_server.py",
+      "maintainer": "internal",
+      "tool_count": 10,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["emails", "contacts", "personal communications"],
+      "recommended_scope": "global",
+      "scope_rationale": "Email access is needed across all work contexts; personal communications are project-agnostic",
+      "documentation_urls": [],
+      "risk_notes": "HIGH SENSITIVITY. Full email access — read, send, delete. Can compose and send emails on behalf of the user."
+    },
+    "eidos-test-forge": {
+      "summary": "Point-and-test framework — probes HTTP, health, CLI, SQL, and MCP endpoints with iterative depth",
+      "source": "/Users/dshanklinbv/repos-eidos-agi/test-forge/mcp_server.py",
+      "maintainer": "internal",
+      "tool_count": 5,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["service endpoints", "database connections", "test results"],
+      "recommended_scope": "per-group",
+      "scope_rationale": "Testing is relevant to development projects but should be scoped to avoid probing unrelated services",
+      "documentation_urls": [],
+      "risk_notes": "Can probe live services and databases. Ensure it only targets intended environments."
+    },
+    "elt-forge": {
+      "summary": "Standalone ELT forge instance — same as eidos-elt-forge but with separate Python environment",
+      "source": "/Users/dshanklinbv/repos-eidos-agi/elt-forge/ (python venv)",
+      "maintainer": "internal",
+      "tool_count": 0,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["database schemas", "ETL configurations"],
+      "recommended_scope": "per-project",
+      "scope_rationale": "Duplicate of eidos-elt-forge with different environment; only needed in specific data pipeline projects",
+      "documentation_urls": [],
+      "risk_notes": "Same as eidos-elt-forge. Consider consolidating to avoid confusion."
+    },
+    "github": {
+      "summary": "GitHub's official MCP server — repos, issues, PRs, projects, code search via Copilot OAuth",
+      "source": "https://api.githubcopilot.com/mcp (remote HTTP)",
+      "maintainer": "vendor",
+      "tool_count": 38,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["source code", "issues", "pull requests", "project data"],
+      "recommended_scope": "global",
+      "scope_rationale": "GitHub access is fundamental to all development work; OAuth scopes control actual access",
+      "documentation_urls": [
+        "https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp/set-up-the-github-mcp-server",
+        "https://github.com/github/github-mcp-server"
+      ],
+      "risk_notes": "Full GitHub access via PAT. Can create repos, push code, merge PRs, write issues. Token in config has broad scope."
+    },
+    "helios": {
+      "summary": "Browser automation for AI agents — control logged-in browser sessions with clicks, screenshots, and navigation",
+      "source": "/Users/dshanklinbv/repos-eidos-agi/helios/ (Node.js monorepo)",
+      "maintainer": "internal",
+      "tool_count": 41,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["browser sessions", "cookies", "page content", "screenshots", "credentials in forms"],
+      "recommended_scope": "per-group",
+      "scope_rationale": "Browser automation is powerful but dangerous; should only be enabled for projects that need web interaction",
+      "documentation_urls": [],
+      "risk_notes": "HIGH SENSITIVITY. Controls real browser with logged-in sessions. Can see passwords, cookies, and interact with any website."
+    },
+    "keeper": {
+      "summary": "Password management — search, retrieve, add, update, and retire credentials from a password vault",
+      "source": "/Users/dshanklinbv/repos-personal/password-cleanup/mcp-servers/keeper/server.py",
+      "maintainer": "internal",
+      "tool_count": 16,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["passwords", "credentials", "API keys", "secret notes"],
+      "recommended_scope": "global",
+      "scope_rationale": "Credential management is needed across all projects; provides secure access to passwords and API keys",
+      "documentation_urls": [],
+      "risk_notes": "CRITICAL SENSITIVITY. Full access to password vault. Can read, create, update, and delete credentials."
+    },
+    "outlook": {
+      "summary": "Microsoft Outlook email and calendar — read inbox, compose, reply, search, and check calendar from local cache",
+      "source": "/Users/dshanklinbv/repos-personal/outlook-mcp/ (Python, reads local Outlook cache)",
+      "maintainer": "internal",
+      "tool_count": 13,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["emails", "calendar events", "contacts", "business communications"],
+      "recommended_scope": "global",
+      "scope_rationale": "Work email and calendar access is needed across all projects; reads from local Outlook cache",
+      "documentation_urls": [],
+      "risk_notes": "HIGH SENSITIVITY. Reads Outlook local cache — all business emails and calendar. Can compose and reply to emails."
+    },
+    "pal": {
+      "summary": "Provider Abstraction Layer — multi-LLM orchestration enabling Claude to consult GPT, Gemini, Grok, and others",
+      "source": "https://github.com/BeehiveInnovations/pal-mcp-server",
+      "maintainer": "vendor",
+      "tool_count": 18,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["code snippets sent to external LLMs", "conversation context"],
+      "recommended_scope": "global",
+      "scope_rationale": "Multi-model consultation is useful everywhere; the user's CLAUDE.md mandates consulting other models",
+      "documentation_urls": [
+        "https://github.com/BeehiveInnovations/pal-mcp-server"
+      ],
+      "risk_notes": "Sends code and conversation context to external LLM providers (OpenAI, Google, etc.). Data leaves local environment."
+    },
+    "railguey": {
+      "summary": "Railway deployment management — deploy, rollback, logs, domains, variables, and service orchestration",
+      "source": "https://github.com/eidos-agi/railguey (pypi:railguey)",
+      "maintainer": "internal",
+      "tool_count": 36,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["deployment configs", "environment variables", "service credentials", "TOTP secrets"],
+      "recommended_scope": "global",
+      "scope_rationale": "Railway is the standard deployment platform for all services; needed everywhere for deploys",
+      "documentation_urls": [
+        "https://github.com/eidos-agi/railguey"
+      ],
+      "risk_notes": "Full Railway access — can deploy, rollback, delete projects, and read environment variables including secrets."
+    },
+    "reeves-comms": {
+      "summary": "Unified communications aggregator — search, thread, and surface high-attention items across all channels",
+      "source": "/Users/dshanklinbv/repos-personal/reeves-web/reeves/apps/comms/mcp (Python module)",
+      "maintainer": "internal",
+      "tool_count": 9,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["communications", "messages", "email threads", "attention items"],
+      "recommended_scope": "global",
+      "scope_rationale": "Communications are cross-cutting; relevant in any work context for checking messages and alerts",
+      "documentation_urls": [],
+      "risk_notes": "Accesses aggregated communications from multiple channels. Contains business and personal messages."
+    },
+    "reeves-global": {
+      "summary": "Content publishing pipeline — article intake, drafting, editing, and publishing to multiple destinations",
+      "source": "/Users/dshanklinbv/repos-personal/reeves-web/reeves/mcp_global/server.py",
+      "maintainer": "internal",
+      "tool_count": 7,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["article content", "publishing credentials", "draft content"],
+      "recommended_scope": "per-group",
+      "scope_rationale": "Article publishing is only relevant for content/marketing work, not general development",
+      "documentation_urls": [],
+      "risk_notes": "Can publish content to external destinations. Ensure articles are reviewed before pushing."
+    },
+    "reeves-messages": {
+      "summary": "Apple Messages (iMessage/SMS) management — conversations, search, drafts, identity resolution, and sweep",
+      "source": "/Users/dshanklinbv/repos-personal/reeves-messages/ (Python, reeves_messages module)",
+      "maintainer": "internal",
+      "tool_count": 14,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["text messages", "iMessages", "contact identities", "personal conversations"],
+      "recommended_scope": "global",
+      "scope_rationale": "Personal messaging is cross-cutting; identity resolution and message management needed in any context",
+      "documentation_urls": [],
+      "risk_notes": "HIGH SENSITIVITY. Reads all Apple Messages. Can draft replies and manage message identities."
+    },
+    "reeves-view": {
+      "summary": "Always-on view daemon — push, pin, and restore named views with SSE real-time updates",
+      "source": "/Users/dshanklinbv/repos-aic/reeves-view/reeves_view/server.py",
+      "maintainer": "internal",
+      "tool_count": 6,
+      "accesses_sensitive_data": false,
+      "sensitive_data_types": [],
+      "recommended_scope": "global",
+      "scope_rationale": "View management daemon is infrastructure-level; relevant across all projects for displaying data",
+      "documentation_urls": [],
+      "risk_notes": "Low risk. Manages display views. No sensitive data access — just layout and rendering."
+    },
+    "rhea-diagrams": {
+      "summary": "AI-powered diagramming via Excalidraw — create, edit, export diagrams with brand themes and Mermaid import",
+      "source": "http://localhost:9445/mcp (local HTTP server)",
+      "maintainer": "internal",
+      "tool_count": 37,
+      "accesses_sensitive_data": false,
+      "sensitive_data_types": [],
+      "recommended_scope": "global",
+      "scope_rationale": "Diagramming is useful across all projects for architecture docs, flowcharts, and visual communication",
+      "documentation_urls": [],
+      "risk_notes": "Low risk. Creates diagrams locally. No external data transmission."
+    },
+    "taskr": {
+      "summary": "Full-stack work management — tasks, devlogs, skillflows, governance, DNS, secrets (Knox), projects, and recon missions",
+      "source": "/Users/dshanklinbv/repos-aic/taskr/taskr-mcp/server.py",
+      "maintainer": "internal",
+      "tool_count": 101,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["task data", "devlogs", "secrets (Knox)", "DNS records", "governance decisions", "SQL queries"],
+      "recommended_scope": "global",
+      "scope_rationale": "Central work management system; tasks, devlogs, and governance span all projects",
+      "documentation_urls": [],
+      "risk_notes": "HIGH SENSITIVITY. Can execute SQL queries, manage secrets via Knox, modify DNS records, and approve governance decisions."
+    },
+    "vercel": {
+      "summary": "Vercel deployment platform — project metadata, logs, and deployment status (read-only)",
+      "source": "https://mcp.vercel.com (remote HTTP, OAuth)",
+      "maintainer": "vendor",
+      "tool_count": 0,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["deployment logs", "project metadata", "environment info"],
+      "recommended_scope": "per-group",
+      "scope_rationale": "Only relevant for projects deployed to Vercel; not all projects use Vercel",
+      "documentation_urls": [
+        "https://vercel.com/docs/agent-resources/vercel-mcp",
+        "https://github.com/vercel/vercel-mcp-overview"
+      ],
+      "risk_notes": "Read-only access to Vercel projects and logs. OAuth-scoped. Low risk but exposes deployment details."
+    },
+    "wrike": {
+      "summary": "Wrike project management — tasks, comments, folders, spaces, and unified search across the AIC workspace",
+      "source": "/Users/dshanklinbv/repos-aic/wrike-mcp/dist/index.js",
+      "maintainer": "internal",
+      "tool_count": 29,
+      "accesses_sensitive_data": true,
+      "sensitive_data_types": ["project tasks", "client data", "business comments", "team assignments"],
+      "recommended_scope": "per-group",
+      "scope_rationale": "Wrike contains AIC client and business data; should only be available in AIC work contexts",
+      "documentation_urls": [
+        "https://www.wrike.com/blog/how-wrikes-mcp-server-works/"
+      ],
+      "risk_notes": "Accesses AIC business Wrike workspace. Contains client project data, task assignments, and business communications."
+    }
+  }
+}
