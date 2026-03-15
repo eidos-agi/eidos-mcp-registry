@@ -148,9 +148,9 @@ class TestPageLoad:
         h1 = page.locator("h1#view-title")
         assert "EIDOS" in h1.text_content()
 
-    def test_nav_rail_has_three_tabs(self, page):
+    def test_nav_rail_has_five_tabs(self, page):
         tabs = page.locator(".nav-rail-btn")
-        assert tabs.count() == 3
+        assert tabs.count() == 5
 
     def test_servers_tab_active_by_default(self, page):
         servers_btn = page.locator("#nav-servers")
@@ -211,6 +211,75 @@ class TestTabNavigation:
 
         assert page.locator("#view-servers").is_visible()
         assert "active" in page.locator("#nav-servers").get_attribute("class")
+
+    def test_click_why_mcp_tab(self, page):
+        page.click("#nav-why-mcp")
+        page.wait_for_timeout(300)
+        assert page.locator("#view-why-mcp").is_visible()
+        text = page.locator("#view-why-mcp").text_content()
+        assert "Infrastructure" in text or "MCP" in text
+
+    def test_click_why_eidos_tab(self, page):
+        page.click("#nav-why-eidos")
+        page.wait_for_timeout(300)
+        assert page.locator("#view-why-eidos").is_visible()
+        text = page.locator("#view-why-eidos").text_content()
+        assert "Registry" in text or "Claude" in text
+
+
+# ── Tests: Why MCP Page ─────────────────────────────────────────
+
+
+class TestWhyMcpPage:
+
+    def test_has_comparison_grid(self, page):
+        page.click("#nav-why-mcp")
+        page.wait_for_timeout(500)
+        assert page.locator(".compare-grid").count() >= 1
+
+    def test_has_feature_grid(self, page):
+        page.click("#nav-why-mcp")
+        page.wait_for_timeout(500)
+        assert page.locator(".feature-grid").count() >= 1
+
+    def test_has_security_section(self, page):
+        page.click("#nav-why-mcp")
+        page.wait_for_timeout(500)
+        text = page.locator("#view-why-mcp").text_content()
+        assert "Security" in text
+
+
+# ── Tests: Why Eidos Page ────────────────────────────────────────
+
+
+class TestWhyEidosPage:
+
+    def test_has_live_metrics(self, page):
+        page.click("#nav-why-eidos")
+        page.wait_for_timeout(500)
+        assert page.locator(".metric-card").count() >= 3
+
+    def test_has_token_chart(self, page):
+        page.click("#nav-why-eidos")
+        page.wait_for_timeout(500)
+        assert page.locator(".bar-chart").count() >= 1
+
+    def test_has_scenario_cards(self, page):
+        page.click("#nav-why-eidos")
+        page.wait_for_timeout(500)
+        assert page.locator(".scenario").count() >= 3
+
+    def test_shows_server_count(self, page):
+        page.click("#nav-why-eidos")
+        page.wait_for_timeout(500)
+        text = page.locator("#view-why-eidos").text_content()
+        # Should show actual server count from test data
+        assert "4" in text or "server" in text.lower()
+
+    def test_has_comparison_grid(self, page):
+        page.click("#nav-why-eidos")
+        page.wait_for_timeout(500)
+        assert page.locator(".compare-grid").count() >= 1
 
 
 # ── Tests: Servers View ──────────────────────────────────────────

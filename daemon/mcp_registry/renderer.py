@@ -281,16 +281,40 @@ header h1 span { color: var(--accent); }
   color: var(--orange);
 }
 
+/* ── Servers Layout (drop zones left, tiles right) ───────── */
+.servers-layout {
+  display: flex;
+  gap: 0;
+  min-height: 0;
+  flex: 1;
+}
+.servers-drop-rail {
+  width: 200px;
+  min-width: 160px;
+  max-width: 240px;
+  flex-shrink: 0;
+  padding: 0 12px 16px 0;
+  border-right: 1px solid var(--border);
+  margin-right: 16px;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+}
+.servers-main {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ── Drop Zone ────────────────────────────────────────────── */
 .drop-zone {
   border: 2px dashed var(--border);
   border-radius: var(--radius);
-  padding: 12px 16px;
-  text-align: center;
+  padding: 10px 12px;
   color: var(--text-dim);
   font-size: 12px;
   transition: border-color 0.15s, background 0.15s;
-  margin-top: 8px;
+  cursor: default;
 }
 .drop-zone.over {
   border-color: var(--accent);
@@ -1196,6 +1220,201 @@ footer {
   font-size: 13px;
   animation: fadeIn 0.2s ease-in;
 }
+
+/* ── Content Pages (Why MCP, Why Eidos) ──────────────────── */
+.content-page {
+  max-width: 800px;
+  padding: 0 20px 40px;
+}
+.content-page h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 32px 0 8px;
+  line-height: 1.3;
+}
+.content-page h2:first-child { margin-top: 0; }
+.content-page h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 24px 0 8px;
+}
+.content-page p {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+.content-page strong { color: var(--text); }
+.content-hero {
+  padding: 32px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.content-hero h1 {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+.content-hero h1 span { color: var(--accent); }
+.content-hero p {
+  font-size: 16px;
+  color: var(--text-dim);
+  max-width: 600px;
+}
+
+/* Comparison grid */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0;
+}
+.compare-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.compare-card.bad { border-color: var(--red); }
+.compare-card.good { border-color: var(--green); }
+.compare-card h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.compare-card.bad h4 { color: var(--red); }
+.compare-card.good h4 { color: var(--green); }
+.compare-card ul {
+  list-style: none;
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.compare-card li {
+  padding: 3px 0;
+}
+.compare-card.bad li::before { content: "\\2717 "; color: var(--red); }
+.compare-card.good li::before { content: "\\2713 "; color: var(--green); }
+
+/* Metric cards */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+}
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+}
+.metric-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.metric-value.bad { color: var(--red); }
+.metric-value.good { color: var(--green); }
+.metric-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+/* Bar chart */
+.bar-chart {
+  margin: 16px 0;
+}
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.bar-label {
+  width: 140px;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: right;
+  flex-shrink: 0;
+}
+.bar-track {
+  flex: 1;
+  height: 24px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s ease;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+.bar-fill.red { background: var(--red); }
+.bar-fill.green { background: var(--green); }
+.bar-fill.orange { background: var(--orange); color: #000; }
+.bar-fill.accent { background: var(--accent); }
+
+/* Scenario cards */
+.scenario {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 12px 0;
+}
+.scenario-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.scenario-icon { font-size: 20px; }
+.scenario-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.scenario p { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin: 0; }
+.scenario .highlight { color: var(--red); font-weight: 500; }
+
+/* Feature list */
+.feature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0;
+}
+.feature-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.feature-item-icon { font-size: 18px; margin-bottom: 6px; }
+.feature-item-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.feature-item-desc { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+
+/* Pull quote */
+.pull-quote {
+  border-left: 3px solid var(--accent);
+  padding: 12px 20px;
+  margin: 20px 0;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--text);
+  background: var(--bg-card);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
 </style>
 </head>
 <body>
@@ -1212,6 +1431,14 @@ footer {
   <button class="nav-rail-btn" data-tab="store" id="nav-store">
     <span class="nav-rail-icon">&#x25C9;</span>
     <span class="nav-rail-label">Store</span>
+  </button>
+  <button class="nav-rail-btn" data-tab="why-mcp" id="nav-why-mcp">
+    <span class="nav-rail-icon">&#x2139;</span>
+    <span class="nav-rail-label">Why MCP</span>
+  </button>
+  <button class="nav-rail-btn" data-tab="why-eidos" id="nav-why-eidos">
+    <span class="nav-rail-icon">&#x2B50;</span>
+    <span class="nav-rail-label">Why Eidos</span>
   </button>
 </nav>
 
@@ -1254,6 +1481,10 @@ footer {
     <div id="view-groups" style="display:none"></div>
     <!-- Store view -->
     <div id="view-store" style="display:none"></div>
+    <!-- Why MCP view -->
+    <div id="view-why-mcp" style="display:none"></div>
+    <!-- Why Eidos view -->
+    <div id="view-why-eidos" style="display:none"></div>
   </section>
 
   <!-- Hidden tree element for backward compat (nav.js renderTree) -->

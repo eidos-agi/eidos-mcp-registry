@@ -123,7 +123,7 @@ function renderGlobalSection(container) {
   container.appendChild(section);
 }
 
-// ── Drop zones ──────────────────────────────────────────────────
+// ── Drop zones (left sidebar) ───────────────────────────────────
 
 function renderDropZones(container) {
   const groups = Object.entries(state.groups)
@@ -132,21 +132,33 @@ function renderDropZones(container) {
 
   if (groups.length === 0) return;
 
-  const section = document.createElement('div');
-  section.style.marginTop = '24px';
-
-  const title = document.createElement('h2');
-  title.style.cssText = 'font-size:14px;color:var(--text-dim);margin-bottom:12px;font-weight:500';
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size:11px;color:var(--text-dim);margin-bottom:8px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px';
   title.textContent = 'Drop to Assign';
-  section.appendChild(title);
+  container.appendChild(title);
 
   for (const [key, group] of groups) {
     const zone = document.createElement('div');
     zone.className = 'drop-zone';
     zone.dataset.group = key;
 
+    const icon = document.createElement('span');
+    icon.style.cssText = 'font-size:14px;flex-shrink:0';
+    icon.textContent = group._missing ? '\uD83D\uDC80' : '\uD83D\uDCC1';
+
+    const info = document.createElement('div');
+    info.style.cssText = 'flex:1;min-width:0';
+    const label = document.createElement('div');
+    label.style.cssText = 'font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+    label.textContent = group.label || key;
+    const count = document.createElement('div');
+    count.style.cssText = 'font-size:10px;color:var(--text-dim)';
     const serverCount = (group.servers || []).length;
-    zone.textContent = `${group.label || key} (${serverCount} servers)`;
+    count.textContent = `${serverCount} server${serverCount !== 1 ? 's' : ''}`;
+    info.append(label, count);
+
+    zone.style.cssText = 'display:flex;align-items:center;gap:8px;text-align:left;padding:10px 12px;margin-bottom:6px';
+    zone.append(icon, info);
 
     zone.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -162,9 +174,8 @@ function renderDropZones(container) {
       showConfirmDialog(serverName, key, group);
     });
 
-    section.appendChild(zone);
+    container.appendChild(zone);
   }
-  container.appendChild(section);
 }
 
 // ── Confirmation dialog ─────────────────────────────────────────
@@ -211,12 +222,22 @@ export function renderServersView() {
   const container = document.getElementById('view-servers');
   container.textContent = '';
 
-  // Also update the old elements for backward compat
-  const cardsTitle = document.getElementById('cards-title');
-  if (cardsTitle) cardsTitle.textContent = 'Servers';
+  // Two-column layout: drop zones (left) | servers (right)
+  const layout = document.createElement('div');
+  layout.className = 'servers-layout';
+
+  // ── Left column: drop zones ──
+  const leftCol = document.createElement('div');
+  leftCol.className = 'servers-drop-rail';
+  renderDropZones(leftCol);
+  layout.appendChild(leftCol);
+
+  // ── Right column: servers ──
+  const rightCol = document.createElement('div');
+  rightCol.className = 'servers-main';
 
   // Global section
-  renderGlobalSection(container);
+  renderGlobalSection(rightCol);
 
   // All non-universal servers
   const universalSet = new Set(state.groups.__universal__?.servers || []);
@@ -226,18 +247,18 @@ export function renderServersView() {
     const title = document.createElement('h2');
     title.style.cssText = 'font-size:14px;color:var(--text-dim);margin-bottom:12px;font-weight:500';
     title.textContent = `All Servers (${allServers.length})`;
-    container.appendChild(title);
+    rightCol.appendChild(title);
 
     const grid = document.createElement('div');
     grid.className = 'cards-grid';
     for (const name of allServers) {
       grid.appendChild(createServerTile(name));
     }
-    container.appendChild(grid);
+    rightCol.appendChild(grid);
   }
 
-  // Drop zones
-  renderDropZones(container);
+  layout.appendChild(rightCol);
+  container.appendChild(layout);
 }
 
 // ── Scan Banner (Non-blocking, parallel lanes) ──────────────────
