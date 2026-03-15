@@ -1,13 +1,16 @@
 """
 Deploy MCP configurations to repo .mcp.json files.
 
-For each group with a path, iterates git repos and writes
-the effective server set as .mcp.json.
+Merge strategy using _registry_managed tracking:
+- We write a "_registry_managed" array into .mcp.json listing servers we own
+- Servers in our current effective set: add or update (registry wins)
+- Servers previously managed but now unassigned: REMOVED
+- Servers we never managed: untouched
+- Top-level keys beyond "mcpServers" and "_registry_managed": preserved
 """
 
 import json
 import logging
-import subprocess
 from pathlib import Path
 
 from mcp_registry.scanner import list_repos_in_group
@@ -15,28 +18,95 @@ from mcp_registry.scanner import list_repos_in_group
 logger = logging.getLogger("mcp_registry.deployer")
 
 
-def _build_mcp_json(server_names: list[str], all_servers: dict) -> dict:
-    """Build .mcp.json content for a list of server names."""
+_SECRET_PATTERNS = ("token", "key", "secret", "password", "credential", "auth")
+
+
+def _has_secrets(env: dict) -> list[str]:
+    """Return env var names that look like secrets."""
+    return [k for k in env if any(p in k.lower() for p in _SECRET_PATTERNS)]
+
+
+# Valid keys per transport type — only these go into .mcp.json entries
+_VALID_ENTRY_KEYS = {"type", "command", "args", "env", "url", "headers", "oauth"}
+
+
+def _build_server_entry(srv: dict) -> dict:
+    """Build a single server entry, keeping only Claude Code-valid keys."""
+    return {k: v for k, v in srv.items() if k in _VALID_ENTRY_KEYS and v}
+
+
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Deep merge override into base. Override wins on conflicts."""
+    result = dict(base)
+    for k, v in override.items():
+        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+            result[k] = _deep_merge(result[k], v)
+        else:
+            result[k] = v
+    return result
+
+
+def _build_mcp_json(server_names: list[str], all_servers: dict,
+                    group_config: dict | None = None) -> dict:
+    """Build the registry's server entries for a list of server names.
+
+    Args:
+        group_config: Optional per-server config overrides from the group.
+                      e.g. {"cerebro-mcp": {"env": {"SUPABASE_URL": "..."}}}
+    """
     mcp_servers = {}
     for name in server_names:
         srv = all_servers.get(name, {})
-        entry = {}
-        if srv.get("type"):
-            entry["type"] = srv["type"]
-        if srv.get("command"):
-            entry["command"] = srv["command"]
-        if srv.get("args"):
-            entry["args"] = srv["args"]
-        if srv.get("env"):
-            entry["env"] = srv["env"]
-        if srv.get("url"):
-            entry["url"] = srv["url"]
+        entry = _build_server_entry(srv)
+        # Apply group-level config overrides
+        if group_config and name in group_config:
+            override = {k: v for k, v in group_config[name].items()
+                       if k in _VALID_ENTRY_KEYS}
+            entry = _deep_merge(entry, override)
         mcp_servers[name] = entry
     return {"mcpServers": mcp_servers}
 
 
+def _merge_mcp_json(existing: dict, ours: dict, managed_names: set[str]) -> dict:
+    """Merge our managed servers into an existing .mcp.json.
+
+    Uses _registry_managed to know what we previously owned:
+    - Previously managed but no longer in managed_names → REMOVE
+    - In managed_names → add/update (registry wins)
+    - Never managed by us → untouched
+    """
+    merged = {}
+    # Preserve all top-level keys except mcpServers and _registry_managed
+    for k, v in existing.items():
+        if k not in ("mcpServers", "_registry_managed"):
+            merged[k] = v
+
+    existing_servers = dict(existing.get("mcpServers", {}))
+    previously_managed = set(existing.get("_registry_managed", []))
+    our_servers = ours.get("mcpServers", {})
+
+    # Servers to remove: previously managed but no longer in our set
+    to_remove = previously_managed - managed_names
+
+    # Start with existing servers, minus ones we're removing
+    result_servers = {
+        name: config for name, config in existing_servers.items()
+        if name not in managed_names and name not in to_remove
+    }
+    # Add all our managed servers (registry wins)
+    result_servers.update(our_servers)
+
+    merged["mcpServers"] = result_servers
+    merged["_registry_managed"] = sorted(managed_names)
+    return merged
+
+
 def preview(store) -> dict:
-    """Dry-run: compute what would be written per repo."""
+    """Dry-run: compute what would be written per repo.
+
+    Only deploys to groups that have at least one directly assigned server.
+    Universal servers are inherited but don't trigger deployment on their own.
+    """
     snapshot = store.snapshot()
     all_servers = snapshot["servers"]
     groups = snapshot["groups"]
@@ -45,15 +115,21 @@ def preview(store) -> dict:
     for group_key, group in groups.items():
         if group_key == "__universal__" or not group.get("path"):
             continue
+        # Skip groups with no directly assigned servers —
+        # don't write .mcp.json to 337 repos just for inherited universals
+        if not group.get("servers"):
+            continue
         repos = list_repos_in_group(group["path"])
         for repo in repos:
             effective = store.effective_servers(repo, group_key)
             if not effective:
                 continue
-            mcp_json = _build_mcp_json(effective, all_servers)
+            group_config = group.get("server_config")
+            ours = _build_mcp_json(effective, all_servers, group_config)
+            managed_names = set(effective)
             mcp_path = str(Path(repo) / ".mcp.json")
 
-            # Check if different from existing
+            # Load existing file
             existing = None
             if Path(mcp_path).exists():
                 try:
@@ -62,21 +138,64 @@ def preview(store) -> dict:
                 except (json.JSONDecodeError, OSError):
                     pass
 
-            if existing != mcp_json:
-                changes[mcp_path] = {
-                    "repo": repo,
-                    "group": group_key,
-                    "servers": effective,
-                    "content": mcp_json,
-                    "action": "update" if existing else "create",
-                }
+            # Compute merged result
+            if existing:
+                final = _merge_mcp_json(existing, ours, managed_names)
+            else:
+                final = dict(ours)
+                final["_registry_managed"] = sorted(managed_names)
+
+            # Skip if nothing would change
+            if existing == final:
+                continue
+
+            # Check if .mcp.json is gitignored
+            gitignore = Path(repo) / ".gitignore"
+            gitignored = False
+            if gitignore.exists():
+                try:
+                    gitignored = ".mcp.json" in gitignore.read_text()
+                except OSError:
+                    pass
+
+            # Detect what changed for the preview
+            existing_server_names = set(existing.get("mcpServers", {}).keys()) if existing else set()
+            previously_managed = set(existing.get("_registry_managed", [])) if existing else set()
+            servers_removed = sorted(previously_managed - managed_names)
+            unmanaged_kept = sorted(
+                existing_server_names - managed_names - (previously_managed - managed_names)
+            )
+            servers_added = sorted(managed_names - existing_server_names)
+            servers_updated = sorted(managed_names & existing_server_names)
+
+            changes[mcp_path] = {
+                "repo": repo,
+                "group": group_key,
+                "servers": effective,
+                "content": final,
+                "action": "update" if existing else "create",
+                "gitignored": gitignored,
+                "unmanaged_kept": unmanaged_kept,
+                "servers_added": servers_added,
+                "servers_updated": servers_updated,
+                "servers_removed": servers_removed,
+            }
 
     return changes
 
 
-def deploy(store, on_progress=None) -> dict:
-    """Write .mcp.json files and optionally remove servers from user scope."""
+def deploy(store, on_progress=None, only_groups: list[str] | None = None) -> dict:
+    """Write .mcp.json files for selected groups.
+
+    Always re-computes preview at deploy time (not stale data from earlier preview).
+
+    Args:
+        only_groups: If provided, only deploy these group keys. Otherwise deploy all.
+    """
+    # Fresh preview — never use stale data
     changes = preview(store)
+    if only_groups:
+        changes = {k: v for k, v in changes.items() if v["group"] in only_groups}
     results = {"written": [], "errors": [], "removed_from_user": []}
 
     total = len(changes)
@@ -97,25 +216,9 @@ def deploy(store, on_progress=None) -> dict:
             results["errors"].append({"path": mcp_path, "error": str(e)})
             logger.error("Failed to write %s: %s", mcp_path, e)
 
-    # Remove deployed servers from user scope
-    snapshot = store.snapshot()
-    deployed_servers = set()
-    for change in changes.values():
-        deployed_servers.update(change["servers"])
-
-    # Only remove servers that are source_scope=user and now assigned to a group
-    for name in deployed_servers:
-        srv = snapshot["servers"].get(name, {})
-        if srv.get("source_scope") == "user":
-            try:
-                subprocess.run(
-                    ["claude", "mcp", "remove", "-s", "user", name],
-                    capture_output=True, text=True, timeout=10,
-                )
-                results["removed_from_user"].append(name)
-                if on_progress:
-                    on_progress({"step": "remove_user", "server": name})
-            except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-                logger.warning("Failed to remove %s from user scope: %s", name, e)
+    # NOTE: We intentionally do NOT remove servers from user scope during deploy.
+    # That's a destructive, hard-to-reverse action. The user should do that
+    # manually once they've verified their group assignments are correct.
+    # Future: add a separate "Promote" action with explicit confirmation.
 
     return results

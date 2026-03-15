@@ -1,16 +1,19 @@
 """
 Discovery: find all MCP servers from claude config and repo directories.
 
-Sources:
-  1. `claude mcp list` — servers at user scope
-  2. Config files (~/.claude.json, project .mcp.json files)
-  3. ~/repos-*/ directories → auto-create groups
+Sources run in parallel:
+  1. `claude mcp list` — servers at user scope (slow — subprocess)
+  2. Config files (~/.claude.json) — fast disk read
+  3. ~/repos-*/ directories → auto-create groups (fast disk scan)
+
+All three fire simultaneously. The UI shows three lanes resolving independently.
 """
 
 import json
 import logging
 import re
 import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 logger = logging.getLogger("mcp_registry.scanner")
@@ -39,7 +42,6 @@ def scan_claude_mcp_list() -> dict[str, dict]:
                     current = {}
                 continue
 
-            # Server name line: "  taskr: stdio ..." or just name patterns
             name_match = re.match(r'^(\S+?):\s*(stdio|sse|streamable-http)', line, re.IGNORECASE)
             if name_match:
                 if current_name:
@@ -52,7 +54,6 @@ def scan_claude_mcp_list() -> dict[str, dict]:
                 }
                 continue
 
-            # Parse key: value pairs
             kv = re.match(r'^(\w[\w\s]*?):\s*(.+)', line)
             if kv and current_name:
                 key = kv.group(1).strip().lower().replace(" ", "_")
@@ -60,7 +61,6 @@ def scan_claude_mcp_list() -> dict[str, dict]:
                 if key == "command":
                     current["command"] = val
                 elif key == "args":
-                    # Try to parse as list
                     try:
                         current["args"] = json.loads(val)
                     except json.JSONDecodeError:
@@ -75,7 +75,6 @@ def scan_claude_mcp_list() -> dict[str, dict]:
                 elif key == "scope":
                     current["source_scope"] = val.lower()
 
-        # Don't forget the last one
         if current_name:
             servers[current_name] = current
 
@@ -99,7 +98,7 @@ def scan_claude_json() -> dict[str, dict]:
             data = json.load(f)
         mcp_servers = data.get("mcpServers", {})
         for name, config in mcp_servers.items():
-            servers[name] = {
+            entry = {
                 "name": name,
                 "type": config.get("type", "stdio"),
                 "command": config.get("command", ""),
@@ -107,6 +106,12 @@ def scan_claude_json() -> dict[str, dict]:
                 "env": config.get("env", {}),
                 "source_scope": "user",
             }
+            # HTTP/SSE servers need url and headers
+            if config.get("url"):
+                entry["url"] = config["url"]
+            if config.get("headers"):
+                entry["headers"] = config["headers"]
+            servers[name] = entry
     except (json.JSONDecodeError, OSError) as e:
         logger.warning("Failed to read ~/.claude.json: %s", e)
 
@@ -141,25 +146,100 @@ def list_repos_in_group(group_path: str) -> list[str]:
     return repos
 
 
-def full_scan(store) -> dict:
-    """Run full discovery and update store. Returns summary."""
-    # Discover servers
-    cli_servers = scan_claude_mcp_list()
-    json_servers = scan_claude_json()
+def _scan_groups_with_counts() -> tuple[dict, list[dict]]:
+    """Discover groups and count repos in each."""
+    repo_groups = discover_repo_groups()
+    group_details = []
+    for key, group in repo_groups.items():
+        repos = list_repos_in_group(group["path"]) if group.get("path") else []
+        group_details.append({
+            "key": key,
+            "label": group["label"],
+            "path": group.get("path"),
+            "repos": len(repos),
+        })
+    return repo_groups, group_details
 
-    # Merge (CLI takes precedence for health info)
+
+def full_scan(store, on_progress=None) -> dict:
+    """Run all discovery sources in parallel. Returns summary.
+
+    Fires three threads simultaneously:
+      - CLI:    `claude mcp list` (slowest — subprocess + health checks)
+      - Config: `~/.claude.json` (fast)
+      - Groups: `~/repos-*/` directory scan (fast)
+
+    on_progress emits events per-lane so the UI can show parallel progress.
+    """
+    def emit(step, detail="", **kw):
+        if on_progress:
+            on_progress({"step": step, "detail": detail, **kw})
+
+    emit("parallel_start", "Launching 3 discovery sources in parallel...")
+
+    # Fire all three lanes simultaneously
+    cli_servers = {}
+    json_servers = {}
+    repo_groups = {}
+    group_details = []
+
+    with ThreadPoolExecutor(max_workers=3, thread_name_prefix="scan") as pool:
+        futures = {
+            pool.submit(scan_claude_mcp_list): "cli",
+            pool.submit(scan_claude_json): "config",
+            pool.submit(_scan_groups_with_counts): "groups",
+        }
+
+        # Emit start for all three lanes at once
+        emit("lane_start", "Running claude mcp list...", lane="cli",
+             label="CLI Discovery")
+        emit("lane_start", "Reading ~/.claude.json...", lane="config",
+             label="Config Files")
+        emit("lane_start", "Scanning ~/repos-*/ directories...", lane="groups",
+             label="Repo Groups")
+
+        # As each completes, emit its result
+        for future in as_completed(futures):
+            lane = futures[future]
+            try:
+                result = future.result()
+                if lane == "cli":
+                    cli_servers = result
+                    emit("lane_done", f"{len(cli_servers)} servers from CLI",
+                         lane="cli", servers=sorted(cli_servers.keys()),
+                         count=len(cli_servers))
+                elif lane == "config":
+                    json_servers = result
+                    emit("lane_done", f"{len(json_servers)} servers from config",
+                         lane="config", servers=sorted(json_servers.keys()),
+                         count=len(json_servers))
+                elif lane == "groups":
+                    repo_groups, group_details = result
+                    total_repos = sum(g["repos"] for g in group_details)
+                    emit("lane_done",
+                         f"{len(repo_groups)} groups, {total_repos} repos",
+                         lane="groups", groups=group_details,
+                         count=len(repo_groups), total_repos=total_repos)
+            except Exception as e:
+                emit("lane_error", str(e), lane=lane)
+                logger.exception("Scan lane %s failed", lane)
+
+    # Merge phase
     all_servers = {**json_servers, **cli_servers}
+    emit("merge_start", f"Merging {len(all_servers)} unique servers...")
 
     if all_servers:
         store.upsert_servers_bulk(all_servers)
 
-    # Discover groups
-    repo_groups = discover_repo_groups()
     for key, group in repo_groups.items():
         store.create_group(key, group["label"], group["path"])
+
+    emit("merge_done", f"{len(all_servers)} servers, {len(repo_groups)} groups ready",
+         servers_found=len(all_servers), groups_found=len(repo_groups))
 
     return {
         "servers_found": len(all_servers),
         "groups_found": len(repo_groups),
         "server_names": sorted(all_servers.keys()),
+        "group_details": group_details,
     }

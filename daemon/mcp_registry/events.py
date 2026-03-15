@@ -33,11 +33,32 @@ class AsyncEventBus:
                 clients.remove(q)
 
     def publish(self, channel: str, data: str):
+        """Thread-safe publish. Can be called from sync worker threads."""
+        loop = None
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+
         for q in self._channels.get(channel, []):
             try:
-                q.put_nowait(data)
+                if loop and loop.is_running():
+                    # Same thread as event loop — direct put
+                    q.put_nowait(data)
+                else:
+                    # Called from worker thread — schedule on event loop
+                    self._put_threadsafe(q, data)
             except asyncio.QueueFull:
                 logger.debug("SSE queue full on %s, dropping", channel)
+
+    def set_loop(self, loop: asyncio.AbstractEventLoop):
+        """Store reference to the main event loop for cross-thread publishing."""
+        self._loop = loop
+
+    def _put_threadsafe(self, q: asyncio.Queue, data: str):
+        loop = getattr(self, '_loop', None)
+        if loop:
+            loop.call_soon_threadsafe(q.put_nowait, data)
 
 
 async def sse_generator(bus: AsyncEventBus, channel: str,

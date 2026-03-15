@@ -38,21 +38,34 @@ class RegistryStore:
     # ── persistence ──────────────────────────────────────────────
 
     def _load(self):
-        if REGISTRY_FILE.exists():
-            try:
-                with open(REGISTRY_FILE) as f:
-                    loaded = json.load(f)
-                # Merge with defaults to handle missing keys
-                for key in _default_state():
-                    if key not in loaded:
-                        loaded[key] = _default_state()[key]
-                self._data = loaded
-                logger.info("Loaded registry from %s", REGISTRY_FILE)
-            except (json.JSONDecodeError, OSError) as e:
-                logger.warning("Failed to load registry: %s", e)
+        backup = REGISTRY_FILE.with_suffix(".backup")
+        for path in [REGISTRY_FILE, backup]:
+            if path.exists():
+                try:
+                    with open(path) as f:
+                        loaded = json.load(f)
+                    for key in _default_state():
+                        if key not in loaded:
+                            loaded[key] = _default_state()[key]
+                    self._data = loaded
+                    if path == backup:
+                        logger.warning("Loaded from backup (primary was corrupt)")
+                    else:
+                        logger.info("Loaded registry from %s", path)
+                    return
+                except (json.JSONDecodeError, OSError) as e:
+                    logger.warning("Failed to load %s: %s", path, e)
+        logger.info("No registry found, starting fresh")
 
     def _save(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
+        # Backup current file before overwriting
+        backup = REGISTRY_FILE.with_suffix(".backup")
+        if REGISTRY_FILE.exists():
+            try:
+                backup.write_bytes(REGISTRY_FILE.read_bytes())
+            except OSError:
+                pass
         tmp = REGISTRY_FILE.with_suffix(".tmp")
         with open(tmp, "w") as f:
             json.dump(self._data, f, indent=2)
@@ -69,11 +82,37 @@ class RegistryStore:
     def on_change(self, fn: Callable):
         self._on_change.append(fn)
 
+    def validate_groups(self):
+        """Flag groups whose paths no longer exist on disk."""
+        with self._lock:
+            changed = False
+            for key, group in self._data["groups"].items():
+                path = group.get("path")
+                if path and not Path(path).is_dir():
+                    if not group.get("_missing"):
+                        group["_missing"] = True
+                        changed = True
+                        logger.warning("Group %s path missing: %s", key, path)
+                else:
+                    if group.get("_missing"):
+                        del group["_missing"]
+                        changed = True
+            if changed:
+                self._save()
+
     # ── queries ──────────────────────────────────────────────────
 
     def snapshot(self) -> dict:
         with self._lock:
             return json.loads(json.dumps(self._data))
+
+    def snapshot_lite(self) -> dict:
+        """Snapshot without env vars — safe for SSE broadcast."""
+        with self._lock:
+            data = json.loads(json.dumps(self._data))
+        for srv in data.get("servers", {}).values():
+            srv.pop("env", None)
+        return data
 
     @property
     def servers(self) -> dict:
@@ -208,6 +247,39 @@ class RegistryStore:
                 del self._data["repo_overrides"][repo]
             self._save()
         self._notify("override_changed", {"repo": repo})
+
+    # ── group-level server config overrides ───────────────────────
+
+    def set_group_server_config(self, group: str, server: str,
+                                config: dict) -> bool:
+        """Set per-server config overrides at the group level.
+
+        Example: set_group_server_config("repos-greenmark", "cerebro-mcp",
+                     {"env": {"SUPABASE_URL": "https://staging.supabase.co"}})
+
+        Only the keys you provide are overridden — everything else
+        comes from the base server config.
+        """
+        with self._lock:
+            if group not in self._data["groups"]:
+                return False
+            g = self._data["groups"][group]
+            if "server_config" not in g:
+                g["server_config"] = {}
+            if config:
+                g["server_config"][server] = config
+            else:
+                g["server_config"].pop(server, None)
+            self._save()
+        self._notify("group_server_config_changed",
+                     {"group": group, "server": server})
+        return True
+
+    def get_group_server_config(self, group: str, server: str) -> dict:
+        """Get per-server config overrides for a group."""
+        with self._lock:
+            g = self._data["groups"].get(group, {})
+            return dict(g.get("server_config", {}).get(server, {}))
 
     def effective_servers(self, repo_path: str, group_key: str) -> list[str]:
         """Compute effective servers for a repo: universal + group + overrides."""

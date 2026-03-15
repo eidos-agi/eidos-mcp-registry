@@ -14,6 +14,7 @@ Usage:
 
 import sys
 import webbrowser
+from pathlib import Path
 
 import click
 import httpx
@@ -43,11 +44,26 @@ def main():
 @main.command()
 @click.option("--port", default=DEFAULT_PORT, help="Port to listen on")
 @click.option("--host", default="127.0.0.1", help="Host to bind to")
-def serve(port: int, host: str):
+@click.option("--reload/--no-reload", default=True, help="Auto-reload on code changes")
+def serve(port: int, host: str, reload: bool):
     """Start the registry daemon."""
+    import socket
     import uvicorn
-    click.echo(f"Starting MCP Registry on {host}:{port}")
-    uvicorn.run("mcp_registry.server:app", host=host, port=port, log_level="info")
+
+    # Check if port is already in use
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        if s.connect_ex((host, port)) == 0:
+            click.echo(f"Error: port {port} already in use. Another daemon running?", err=True)
+            click.echo(f"  Try: kill -9 $(lsof -ti:{port})", err=True)
+            sys.exit(1)
+
+    click.echo(f"Starting MCP Registry on {host}:{port}" + (" (reload)" if reload else ""))
+    uvicorn.run(
+        "mcp_registry.server:app",
+        host=host, port=port, log_level="info",
+        reload=reload,
+        reload_dirs=[str(Path(__file__).parent.parent)] if reload else None,
+    )
 
 
 @main.command()
