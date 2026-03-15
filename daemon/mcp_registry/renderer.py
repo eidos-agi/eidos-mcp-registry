@@ -1440,6 +1440,10 @@ footer {
     <span class="nav-rail-icon">&#x2B50;</span>
     <span class="nav-rail-label">Why Eidos</span>
   </button>
+  <button class="nav-rail-btn" data-tab="rebuttal" id="nav-rebuttal">
+    <span class="nav-rail-icon">&#x2694;</span>
+    <span class="nav-rail-label">Rebuttal</span>
+  </button>
 </nav>
 
 <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
@@ -1485,6 +1489,8 @@ footer {
     <div id="view-why-mcp" style="display:none"></div>
     <!-- Why Eidos view -->
     <div id="view-why-eidos" style="display:none"></div>
+    <!-- Rebuttal view -->
+    <div id="view-rebuttal" style="display:none"></div>
   </section>
 
   <!-- Hidden tree element for backward compat (nav.js renderTree) -->

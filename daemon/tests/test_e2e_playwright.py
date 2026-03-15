@@ -148,9 +148,9 @@ class TestPageLoad:
         h1 = page.locator("h1#view-title")
         assert "EIDOS" in h1.text_content()
 
-    def test_nav_rail_has_five_tabs(self, page):
+    def test_nav_rail_has_six_tabs(self, page):
         tabs = page.locator(".nav-rail-btn")
-        assert tabs.count() == 5
+        assert tabs.count() == 6
 
     def test_servers_tab_active_by_default(self, page):
         servers_btn = page.locator("#nav-servers")
@@ -280,6 +280,39 @@ class TestWhyEidosPage:
         page.click("#nav-why-eidos")
         page.wait_for_timeout(500)
         assert page.locator(".compare-grid").count() >= 1
+
+
+# ── Tests: Rebuttal Page ─────────────────────────────────────────
+
+
+class TestRebuttalPage:
+
+    def test_click_rebuttal_tab(self, page):
+        page.click("#nav-rebuttal")
+        page.wait_for_timeout(300)
+        assert page.locator("#view-rebuttal").is_visible()
+
+    def test_has_perplexity_reference(self, page):
+        page.click("#nav-rebuttal")
+        page.wait_for_timeout(500)
+        text = page.locator("#view-rebuttal").text_content()
+        assert "Perplexity" in text
+
+    def test_has_comparison_grids(self, page):
+        page.click("#nav-rebuttal")
+        page.wait_for_timeout(500)
+        assert page.locator(".compare-grid").count() >= 2
+
+    def test_has_industry_response(self, page):
+        page.click("#nav-rebuttal")
+        page.wait_for_timeout(500)
+        text = page.locator("#view-rebuttal").text_content()
+        assert "Anthropic" in text or "OpenAI" in text or "Cloudflare" in text
+
+    def test_has_bottom_line_metrics(self, page):
+        page.click("#nav-rebuttal")
+        page.wait_for_timeout(500)
+        assert page.locator(".metric-card").count() >= 3
 
 
 # ── Tests: Servers View ──────────────────────────────────────────

@@ -406,3 +406,183 @@ export function renderWhyEidosView() {
 
   container.appendChild(page);
 }
+
+// ══════════════════════════════════════════════════════════════════
+// REBUTTAL — Perplexity, CLI, and the Scoping Answer
+// ══════════════════════════════════════════════════════════════════
+
+export function renderRebuttalView() {
+  const container = document.getElementById('view-rebuttal');
+  if (!container) return;
+  container.textContent = '';
+
+  const m = computeMetrics();
+  const page = el('div', 'content-page');
+
+  // Hero
+  const hero = el('div', 'content-hero');
+  const h1 = document.createElement('h1');
+  h1.innerHTML = 'Perplexity Is Right. <span>And Also Wrong.</span>';
+  hero.appendChild(h1);
+  hero.appendChild(para('On March 11, 2026, Perplexity CTO Denis Yarats announced they\'re moving away from MCP toward APIs and CLIs. His criticisms are real. His conclusion doesn\'t follow \u2014 unless you\'re Perplexity.'));
+  page.appendChild(hero);
+
+  // ── Section: What Yarats Said
+  page.appendChild(el('h2', null, 'What Denis Yarats Actually Said'));
+  page.appendChild(para('At the Ask 2026 conference, Yarats identified two core problems with MCP:'));
+
+  const yaratsCriticisms = el('div', 'feature-grid');
+  yaratsCriticisms.appendChild(featureItem('\uD83D\uDCCA', 'Tool schemas eat context tokens',
+    'Every MCP tool definition \u2014 name, description, parameter schema, response format \u2014 is injected into every system prompt. With many tools, this overhead compounds across long conversations. "We were burning tokens on tool definitions the model never used."'));
+  yaratsCriticisms.appendChild(featureItem('\uD83D\uDD10', 'Auth is clunky',
+    'Each MCP server handles its own auth flow. Connecting to multiple services means multiple auth handshakes, multiple token management paths, multiple failure modes. "We wanted one key, one endpoint, done."'));
+  page.appendChild(yaratsCriticisms);
+
+  page.appendChild(pullQuote('These are real problems. We agree with the diagnosis. We disagree with the prescription.'));
+
+  // ── Section: Where He's Right
+  page.appendChild(el('h2', null, 'Where Perplexity Is Right'));
+  page.appendChild(para('<strong>Give credit where it\'s due.</strong> Yarats identified a genuine architectural pain point that most MCP advocates hand-wave away. The token overhead is not theoretical:'));
+
+  const rightChart = el('div', 'bar-chart');
+  rightChart.appendChild(barRow('Your env (unscoped)', 100, `~${(m.totalTokensAll / 1000).toFixed(0)}K tokens wasted/msg`, 'red'));
+  rightChart.appendChild(barRow('Perplexity\'s env', 85, 'Similar scale at production', 'red'));
+  rightChart.appendChild(barRow('After proper scoping', Math.max(8, 100 - m.pctSavings), `~${(m.avgGroupTokens / 1000).toFixed(0)}K tokens/msg`, 'green'));
+  page.appendChild(rightChart);
+
+  page.appendChild(para('Yarats is also right that <strong>for Perplexity\'s specific use case</strong>, MCP is overkill:'));
+
+  const rightReasons = el('div', 'compare-grid');
+
+  const rightCard = el('div', 'compare-card good');
+  rightCard.appendChild(el('h4', null, 'Perplexity\'s situation'));
+  const rightList = el('ul');
+  ['Single product, single agent, known tool surface',
+   'They control both the model and the tools',
+   'Tool set is small and stable (search, research, reasoning)',
+   'No multi-tenant data separation needed',
+   'No per-client credential isolation',
+   'Internal team \u2014 not shipping MCP to external users',
+   'Can hardcode API calls directly into their agent loop',
+  ].forEach(i => rightList.appendChild(el('li', null, i)));
+  rightCard.appendChild(rightList);
+
+  const contextCard = el('div', 'compare-card bad');
+  contextCard.appendChild(el('h4', null, 'But that\'s not your situation'));
+  const contextList = el('ul');
+  [`${m.totalServers} servers from multiple vendors and internal tools`,
+   `${m.groupCount} workspace groups with different needs`,
+   `${m.serversWithSecrets} servers with credentials that need isolation`,
+   'Multiple clients/projects with confidentiality requirements',
+   'Tools change frequently as the ecosystem evolves',
+   'Need audit trail for compliance',
+   'Can\'t hardcode \u2014 tool surface changes weekly',
+  ].forEach(i => contextList.appendChild(el('li', null, i)));
+  contextCard.appendChild(contextList);
+
+  rightReasons.append(rightCard, contextCard);
+  page.appendChild(rightReasons);
+
+  // ── Section: Where He's Wrong
+  page.appendChild(el('h2', null, 'Where the Argument Falls Apart'));
+  page.appendChild(para('Yarats\' solution is to <strong>abandon the protocol and go back to raw API calls and CLI subprocesses</strong>. This solves the token problem by discarding everything MCP provides. It\'s like solving email spam by going back to fax machines.'));
+
+  page.appendChild(el('h3', null, '1. The token problem has a scoping solution'));
+  page.appendChild(para(`Load all ${m.totalServers} servers into every context? Yes, that\'s wasteful. Load only the 5 servers relevant to this workspace group? <strong>${m.pctSavings}% reduction.</strong> The problem isn\'t the protocol. It\'s the lack of a management layer.`));
+
+  page.appendChild(el('h3', null, '2. CLI tools lose security properties'));
+  page.appendChild(para('When you replace MCP with CLI subprocesses, you lose:'));
+
+  page.appendChild(compareGrid(
+    'What CLI gives you',
+    [
+      'Fast to invoke \u2014 just spawn a process',
+      'No schema overhead \u2014 no tool definitions in prompt',
+      'Simple \u2014 input in, output out, done',
+      'No auth complexity \u2014 env vars or flags',
+    ],
+    'What CLI takes away',
+    [
+      'No credential isolation \u2014 secrets in env vars readable by any child process',
+      'No typed schemas \u2014 parse stdout and pray it\'s valid JSON',
+      'No audit trail \u2014 subprocess ran and exited, no log',
+      'No access control \u2014 every tool has full permissions',
+      'No input validation \u2014 malformed args cause silent failures',
+      'No rate limiting \u2014 runaway loops hammer APIs unchecked',
+      'No discoverability \u2014 must know the exact command',
+      'No stateful sessions \u2014 every call starts cold',
+    ]
+  ));
+
+  page.appendChild(el('h3', null, '3. "Most MCP features go unused" is a product problem, not a protocol problem'));
+  page.appendChild(para('Yarats noted that most MCP features \u2014 resources, prompts, sampling \u2014 go unused. True. But HTTP also has features most apps don\'t use (PATCH, OPTIONS, 103 Early Hints). You don\'t abandon HTTP because you only use GET and POST. The features exist for the use cases that need them.'));
+
+  page.appendChild(el('h3', null, '4. The industry is solving this at the protocol level'));
+  page.appendChild(para('While Perplexity retreats to CLI:'));
+
+  const industryResponse = el('div', 'feature-grid');
+  industryResponse.appendChild(featureItem('\uD83E\uDDE0', 'Anthropic: Selective Tool Loading',
+    'Code Mode reduces MCP token usage by 98.7% by only loading tools when the model signals it needs them. The schema overhead problem is being solved at the runtime level.'));
+  industryResponse.appendChild(featureItem('\uD83D\uDD0D', 'OpenAI: Tool Search',
+    'The Responses API ships tool search \u2014 tools only appear in context when the model identifies a need. Hundreds of tools, near-zero overhead when idle.'));
+  industryResponse.appendChild(featureItem('\uD83C\uDF10', 'Cloudflare: Remote MCP',
+    'Cloudflare launched remote MCP hosting with built-in OAuth. The auth problem Yarats complained about? Solved at the infrastructure level.'));
+  industryResponse.appendChild(featureItem('\uD83D\uDCC1', 'Eidos: Group Scoping',
+    `This registry. ${m.totalServers} servers scoped to ${m.groupCount} groups. ${m.pctSavings}% token reduction without abandoning any MCP capability.`));
+  page.appendChild(industryResponse);
+
+  // ── Section: The Real Lesson
+  page.appendChild(el('h2', null, 'The Real Lesson'));
+  page.appendChild(para('Perplexity\'s move tells us something important: <strong>unmanaged MCP doesn\'t scale.</strong> Loading every tool into every context, handling auth per-server, hoping the model picks the right tool from 200 options \u2014 that breaks.'));
+  page.appendChild(para('But the answer isn\'t to abandon structured, secure, typed tool interfaces and go back to parsing stdout from subprocesses. The answer is to add a management layer that <strong>scopes the right tools to the right context.</strong>'));
+
+  page.appendChild(pullQuote('Perplexity looked at MCP\'s scaling problem and said "throw it away." We looked at the same problem and said "manage it." Both are valid responses to a real pain point. Only one preserves security, auditability, and structured tool interfaces.'));
+
+  // ── Section: Who Should Follow Perplexity
+  page.appendChild(el('h2', null, 'Who Should Follow Perplexity\'s Lead'));
+  page.appendChild(para('To be fair \u2014 Yarats\' approach is correct for a specific profile:'));
+
+  const followGrid = el('div', 'compare-grid');
+
+  const followCard = el('div', 'compare-card good');
+  followCard.appendChild(el('h4', null, 'CLI makes sense when...'));
+  const followList = el('ul');
+  ['You control both the model and the tools',
+   'Your tool surface is small and stable (<10 tools)',
+   'Single-agent, single-product architecture',
+   'No multi-tenant data separation needed',
+   'Internal use only \u2014 no compliance requirements',
+   'You can hardcode integrations into your agent loop',
+  ].forEach(i => followList.appendChild(el('li', null, i)));
+  followCard.appendChild(followList);
+
+  const dontFollowCard = el('div', 'compare-card bad');
+  dontFollowCard.appendChild(el('h4', null, 'MCP + Registry when...'));
+  const dontFollowList = el('ul');
+  ['Multiple clients, projects, or workspaces',
+   'Dozens of MCP servers from different vendors',
+   'Credentials that must be isolated per-context',
+   'Compliance or audit requirements',
+   'Tool surface changes frequently',
+   'Multiple developers or agents sharing infrastructure',
+   'You need rollback, preview, and deployment safety',
+  ].forEach(i => dontFollowList.appendChild(el('li', null, i)));
+  dontFollowCard.appendChild(dontFollowList);
+
+  followGrid.append(followCard, dontFollowCard);
+  page.appendChild(followGrid);
+
+  // ── Section: The Bottom Line
+  page.appendChild(el('h2', null, 'The Bottom Line'));
+  page.appendChild(para('Denis Yarats is a sharp engineer solving a real problem for his company. His diagnosis of MCP\'s token overhead is accurate and we\'ve built an entire tool to address it. But "MCP has a scaling problem" and "abandon MCP" are very different conclusions.'));
+
+  const bottomMetrics = el('div', 'metrics-row');
+  bottomMetrics.appendChild(metricCard(`${m.pctSavings}%`, 'Token overhead eliminated by scoping'));
+  bottomMetrics.appendChild(metricCard('0', 'Security features lost'));
+  bottomMetrics.appendChild(metricCard(`${m.totalServers}`, 'Servers still fully managed'));
+  page.appendChild(bottomMetrics);
+
+  page.appendChild(pullQuote('The best response to "MCP doesn\'t scale" isn\'t "abandon MCP." It\'s "give it a control plane." That\'s what this registry is.'));
+
+  container.appendChild(page);
+}
