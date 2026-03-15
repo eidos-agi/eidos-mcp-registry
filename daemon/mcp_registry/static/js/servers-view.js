@@ -584,7 +584,38 @@ async function renderServerDetail(container, name) {
     import('./editor.js').then(m => m.openEditor(name));
   });
 
-  header.append(dot, nameEl, editBtn);
+  // Disable button — removes from all groups + user scope
+  const disableBtn = document.createElement('button');
+  disableBtn.className = 'btn';
+  disableBtn.style.cssText = 'color:var(--red);border-color:var(--red)';
+  disableBtn.textContent = 'Disable';
+  disableBtn.addEventListener('click', async () => {
+    // Confirm
+    if (!confirm(`Disable ${name}?\n\nThis will:\n- Unassign from all groups\n- Remove from ~/.claude.json\n\nThe server stays in the registry and can be re-enabled anytime.`)) return;
+
+    disableBtn.disabled = true;
+    disableBtn.textContent = 'Disabling...';
+
+    // Unassign from every group
+    for (const [gk, g] of Object.entries(state.groups)) {
+      if ((g.servers || []).includes(name)) {
+        await api.post('/unassign', { server: name, group: gk });
+      }
+    }
+
+    // Remove from user scope
+    await api.post('/promote', { servers: [name] });
+
+    disableBtn.textContent = 'Disabled';
+    disableBtn.style.color = 'var(--text-dim)';
+    disableBtn.style.borderColor = 'var(--border)';
+    import('./toast.js').then(m => m.showToast(`${name} disabled. Removed from all groups and user scope.`, 'success'));
+    _auditCache = null;
+    _tokenBudgetCache = null;
+    await loadData();
+  });
+
+  header.append(dot, nameEl, disableBtn, editBtn);
   container.appendChild(header);
 
   // Summary from catalog
@@ -885,7 +916,22 @@ async function renderServerDetail(container, name) {
     const badge = document.createElement('span');
     badge.style.cssText = `font-size:10px;padding:1px 6px;border-radius:3px;${gk === '__universal__' ? 'background:var(--accent-dim);color:var(--accent)' : 'background:rgba(63,185,80,0.15);color:var(--green)'}`;
     badge.textContent = gk === '__universal__' ? 'global' : 'assigned';
-    row.append(icon, label, badge);
+
+    // Unassign button
+    const unassignBtn = document.createElement('button');
+    unassignBtn.className = 'btn';
+    unassignBtn.style.cssText = 'font-size:10px;padding:2px 8px;color:var(--text-dim)';
+    unassignBtn.textContent = 'Remove';
+    unassignBtn.addEventListener('click', async () => {
+      unassignBtn.disabled = true;
+      await api.post('/unassign', { server: name, group: gk });
+      _auditCache = null;
+      _tokenBudgetCache = null;
+      await loadData();
+      renderServersView();
+    });
+
+    row.append(icon, label, badge, unassignBtn);
     groupSection.appendChild(row);
   }
   if (!hasAssignment) {
@@ -894,6 +940,48 @@ async function renderServerDetail(container, name) {
     empty.textContent = 'Not assigned to any group';
     groupSection.appendChild(empty);
   }
+
+  // Assign to group dropdown
+  const assignRow = document.createElement('div');
+  assignRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:10px';
+
+  const select = document.createElement('select');
+  select.style.cssText = 'flex:1;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:12px';
+
+  const defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = 'Assign to group...';
+  select.appendChild(defaultOpt);
+
+  for (const [gk, g] of Object.entries(state.groups).sort((a, b) => (a[1].label || a[0]).localeCompare(b[1].label || b[0]))) {
+    if ((g.servers || []).includes(name)) continue; // already assigned
+    const opt = document.createElement('option');
+    opt.value = gk;
+    opt.textContent = gk === '__universal__' ? '\uD83C\uDF10 Global' : g.label || gk;
+    select.appendChild(opt);
+  }
+
+  const assignBtn = document.createElement('button');
+  assignBtn.className = 'btn btn-primary';
+  assignBtn.style.cssText = 'font-size:12px;padding:6px 14px';
+  assignBtn.textContent = 'Assign';
+  assignBtn.addEventListener('click', async () => {
+    const gk = select.value;
+    if (!gk) return;
+    assignBtn.disabled = true;
+    assignBtn.textContent = 'Assigning...';
+    await api.post('/assign', { server: name, group: gk });
+    state.pendingGroups.add(gk);
+    renderPendingBanner();
+    _auditCache = null;
+    _tokenBudgetCache = null;
+    await loadData();
+    import('./toast.js').then(m => m.showToast(`Assigned ${name} to ${state.groups[gk]?.label || gk}`, 'success'));
+    renderServersView();
+  });
+
+  assignRow.append(select, assignBtn);
+  groupSection.appendChild(assignRow);
 
   container.appendChild(groupSection);
 
