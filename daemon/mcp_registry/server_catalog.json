@@ -15,33 +15,68 @@
         "https://github.com/MrLesk/Backlog.md",
         "https://www.npmjs.com/package/@radleta/backlog-md-mcp"
       ],
-      "risk_notes": "Low risk. Reads/writes markdown files in the current repo only."
+      "risk_notes": "Low risk. Reads/writes markdown files in the current repo only.",
+      "installation": {
+        "binary": "/Users/dshanklinbv/.local/bin/backlog",
+        "binary_resolves_to": "/Users/dshanklinbv/repos-aic/Backlog.md/dist/backlog",
+        "command": "backlog",
+        "args": [
+          "mcp",
+          "start"
+        ],
+        "code_repo": "/Users/dshanklinbv/repos-aic/Backlog.md",
+        "last_commit_date": "2026-02-22 18:24:30 +0100",
+        "last_commit_message": "BACK-397 - Fix drag-and-drop between columns when target is shorter (#544)",
+        "code_age_days": 20
+      }
     },
     "cerebro-mcp": {
-      "summary": "Organizational knowledge base — remember, recall, and search across ADRs, SOPs, and topics",
+      "summary": "Organizational knowledge base \u2014 remember, recall, and search across ADRs, SOPs, and topics",
       "source": "pypi:cerebro-mcp (installed via pyenv shim)",
       "maintainer": "internal",
       "tool_count": 7,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["organizational knowledge", "architectural decisions", "SOPs"],
+      "sensitive_data_types": [
+        "organizational knowledge",
+        "architectural decisions",
+        "SOPs"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "Organizational memory is relevant across all projects; provides context for architectural decisions everywhere",
       "documentation_urls": [],
-      "risk_notes": "Contains institutional knowledge and architectural decisions. Internal only."
+      "risk_notes": "Contains institutional knowledge and architectural decisions. Internal only.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-greenmark-waste-solutions/cerebro-mcp",
+        "last_commit_date": "2026-03-12 23:42:59 -0500",
+        "last_commit_message": "Add study/sleep knowledge compression and expand tool definitions",
+        "code_age_days": 2
+      }
     },
     "claude-resume": {
-      "summary": "Session recovery for Claude Code — find, inspect, and resume crashed or abandoned sessions",
+      "summary": "Session recovery for Claude Code \u2014 find, inspect, and resume crashed or abandoned sessions",
       "source": "https://github.com/eidos-agi/claude-resume, pypi:claude-resume",
       "maintainer": "internal",
       "tool_count": 15,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["session transcripts", "code context", "conversation history"],
+      "sensitive_data_types": [
+        "session transcripts",
+        "code context",
+        "conversation history"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "Session recovery is needed everywhere; reads local ~/.claude session data regardless of project",
       "documentation_urls": [
         "https://github.com/eidos-agi/claude-resume"
       ],
-      "risk_notes": "Reads Claude Code session transcripts which may contain sensitive code and conversations from any project."
+      "risk_notes": "Reads Claude Code session transcripts which may contain sensitive code and conversations from any project.",
+      "installation": {
+        "binary": "/Users/dshanklinbv/.pyenv/versions/3.12.7/bin/claude-resume-mcp",
+        "command": "claude-resume-mcp",
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/claude-resume",
+        "last_commit_date": "2026-03-08 03:48:13 -0500",
+        "last_commit_message": "Add comprehensive project and architecture documentation",
+        "code_age_days": 7
+      }
     },
     "context7": {
       "summary": "Up-to-date library and framework documentation for LLMs, powered by Upstash",
@@ -56,22 +91,44 @@
         "https://context7.com/",
         "https://github.com/upstash/context7"
       ],
-      "risk_notes": "Sends library names to Upstash servers for doc retrieval. No sensitive data transmitted. API key used for rate limits."
+      "risk_notes": "Sends library names to Upstash servers for doc retrieval. No sensitive data transmitted. API key used for rate limits.",
+      "installation": {
+        "type": "remote",
+        "url": "https://mcp.context7.com/mcp",
+        "code_repo": "https://mcp.context7.com",
+        "code_age_days": 0
+      }
     },
     "director-daemon": {
-      "summary": "Autonomous orchestrator for recurring personal work — comms extraction, security monitoring, scheduling",
+      "summary": "Autonomous orchestrator for recurring personal work \u2014 comms extraction, security monitoring, scheduling",
       "source": "/Users/dshanklinbv/repos-personal/aic-director-daemon/mcp_server/server.py",
       "maintainer": "internal",
       "tool_count": 8,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["communications", "security alerts", "personal scheduling data"],
+      "sensitive_data_types": [
+        "communications",
+        "security alerts",
+        "personal scheduling data"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "Personal orchestration daemon relevant to all work contexts; aggregates comms and alerts",
       "documentation_urls": [],
-      "risk_notes": "Accesses personal communications and security data. High sensitivity — internal only."
+      "risk_notes": "Accesses personal communications and security data. High sensitivity \u2014 internal only.",
+      "installation": {
+        "binary": "/Users/dshanklinbv/.pyenv/versions/3.12.7/bin/python3",
+        "binary_resolves_to": "/Users/dshanklinbv/.pyenv/versions/3.12.7/bin/python3.12",
+        "command": "python3",
+        "args": [
+          "/Users/dshanklinbv/repos-personal/aic-director-daemon/mcp_server/server.py"
+        ],
+        "code_repo": "/Users/dshanklinbv/repos-personal/aic-director-daemon",
+        "last_commit_date": "2026-02-25 23:22:32 -0600",
+        "last_commit_message": "Consolidate runtime data under ~/.director-daemon/",
+        "code_age_days": 17
+      }
     },
     "eidos": {
-      "summary": "Eidos AGI platform knowledge base — CLI guides, railway guides, vault guides, and cross-service search",
+      "summary": "Eidos AGI platform knowledge base \u2014 CLI guides, railway guides, vault guides, and cross-service search",
       "source": "/Users/dshanklinbv/repos-eidos-agi/eidos-mcp/eidos_mcp/server.py",
       "maintainer": "internal",
       "tool_count": 6,
@@ -80,10 +137,16 @@
       "recommended_scope": "per-group",
       "scope_rationale": "Only relevant to Eidos AGI projects; provides platform-specific documentation and search",
       "documentation_urls": [],
-      "risk_notes": "Low risk. Read-only knowledge base for Eidos platform conventions and guides."
+      "risk_notes": "Low risk. Read-only knowledge base for Eidos platform conventions and guides.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/eidos-mcp",
+        "last_commit_date": "2026-03-11 00:30:52 -0500",
+        "last_commit_message": "chore: update server, add providers, cleanup docs",
+        "code_age_days": 4
+      }
     },
     "eidos-book-forge": {
-      "summary": "Composable book publishing pipeline — markdown in, formatted books out",
+      "summary": "Composable book publishing pipeline \u2014 markdown in, formatted books out",
       "source": "/Users/dshanklinbv/repos-eidos-agi/book-forge/dist/mcp.js",
       "maintainer": "internal",
       "tool_count": 0,
@@ -92,34 +155,60 @@
       "recommended_scope": "per-project",
       "scope_rationale": "Only needed when working on book/publishing projects; no tools registered in current session",
       "documentation_urls": [],
-      "risk_notes": "Low risk. Generates book artifacts from markdown content."
+      "risk_notes": "Low risk. Generates book artifacts from markdown content.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/book-forge",
+        "last_commit_date": "2026-03-11 01:25:08 -0500",
+        "last_commit_message": "chore: pipeline stages, TTS, config updates",
+        "code_age_days": 4
+      }
     },
     "eidos-consent": {
-      "summary": "Billing-aware API key broker for the Eidos forge toolchain — manages billing entity selection and consent",
+      "summary": "Billing-aware API key broker for the Eidos forge toolchain \u2014 manages billing entity selection and consent",
       "source": "/Users/dshanklinbv/repos-eidos-agi/eidos-consent/dist/mcp.js",
       "maintainer": "internal",
       "tool_count": 3,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["API keys", "billing entities", "authorization tokens"],
+      "sensitive_data_types": [
+        "API keys",
+        "billing entities",
+        "authorization tokens"
+      ],
       "recommended_scope": "per-group",
       "scope_rationale": "Only needed for Eidos forge tools that require API key brokering; not relevant to non-Eidos projects",
       "documentation_urls": [],
-      "risk_notes": "Manages API keys and billing selection. Sensitive — controls which billing entity pays for AI API calls."
+      "risk_notes": "Manages API keys and billing selection. Sensitive \u2014 controls which billing entity pays for AI API calls.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/eidos-consent",
+        "last_commit_date": "2026-03-11 00:30:54 -0500",
+        "last_commit_message": "chore: commit audit, crypto, and swift notification work",
+        "code_age_days": 4
+      }
     },
     "eidos-elt-forge": {
-      "summary": "Modular agentic framework for data pipelines — stateful workflow engine with medallion architecture",
+      "summary": "Modular agentic framework for data pipelines \u2014 stateful workflow engine with medallion architecture",
       "source": "/Users/dshanklinbv/repos-eidos-agi/elt-forge/mcp_server.py",
       "maintainer": "internal",
       "tool_count": 0,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["database schemas", "ETL configurations", "data pipeline definitions"],
+      "sensitive_data_types": [
+        "database schemas",
+        "ETL configurations",
+        "data pipeline definitions"
+      ],
       "recommended_scope": "per-project",
       "scope_rationale": "Only relevant when building data pipelines; accesses database schemas and ETL configs",
       "documentation_urls": [],
-      "risk_notes": "Accesses database schemas and can generate ETL pipeline code. Use only in data engineering contexts."
+      "risk_notes": "Accesses database schemas and can generate ETL pipeline code. Use only in data engineering contexts.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/elt-forge",
+        "last_commit_date": "2026-03-11 01:24:37 -0500",
+        "last_commit_message": "chore: module refactor, auditor improvements, learnings system",
+        "code_age_days": 4
+      }
     },
     "eidos-image-forge": {
-      "summary": "AI image generation via Google Gemini — cover art, illustrations, icons, and image editing",
+      "summary": "AI image generation via Google Gemini \u2014 cover art, illustrations, icons, and image editing",
       "source": "/Users/dshanklinbv/repos-eidos-agi/image-forge/dist/mcp.js",
       "maintainer": "internal",
       "tool_count": 4,
@@ -128,161 +217,310 @@
       "recommended_scope": "per-group",
       "scope_rationale": "Image generation is useful across creative/design projects but not needed for pure backend work",
       "documentation_urls": [],
-      "risk_notes": "Sends prompts to Google Gemini for image generation. Generated images stored locally. API costs apply."
+      "risk_notes": "Sends prompts to Google Gemini for image generation. Generated images stored locally. API costs apply.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/image-forge",
+        "last_commit_date": "2026-03-11 01:25:15 -0500",
+        "last_commit_message": "chore: update dependencies",
+        "code_age_days": 4
+      }
     },
     "eidos-mail": {
-      "summary": "Email management — inbox, search, read, send, reply, forward, and sync for personal email",
+      "summary": "Email management \u2014 inbox, search, read, send, reply, forward, and sync for personal email",
       "source": "/Users/dshanklinbv/repos-eidos-agi/eidos-mail/mcp_server.py",
       "maintainer": "internal",
       "tool_count": 10,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["emails", "contacts", "personal communications"],
+      "sensitive_data_types": [
+        "emails",
+        "contacts",
+        "personal communications"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "Email access is needed across all work contexts; personal communications are project-agnostic",
       "documentation_urls": [],
-      "risk_notes": "HIGH SENSITIVITY. Full email access — read, send, delete. Can compose and send emails on behalf of the user."
+      "risk_notes": "HIGH SENSITIVITY. Full email access \u2014 read, send, delete. Can compose and send emails on behalf of the user.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/eidos-mail",
+        "last_commit_date": "2026-03-11 00:30:55 -0500",
+        "last_commit_message": "chore: commit test-forge state",
+        "code_age_days": 4
+      }
     },
     "eidos-test-forge": {
-      "summary": "Point-and-test framework — probes HTTP, health, CLI, SQL, and MCP endpoints with iterative depth",
+      "summary": "Point-and-test framework \u2014 probes HTTP, health, CLI, SQL, and MCP endpoints with iterative depth",
       "source": "/Users/dshanklinbv/repos-eidos-agi/test-forge/mcp_server.py",
       "maintainer": "internal",
       "tool_count": 5,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["service endpoints", "database connections", "test results"],
+      "sensitive_data_types": [
+        "service endpoints",
+        "database connections",
+        "test results"
+      ],
       "recommended_scope": "per-group",
       "scope_rationale": "Testing is relevant to development projects but should be scoped to avoid probing unrelated services",
       "documentation_urls": [],
-      "risk_notes": "Can probe live services and databases. Ensure it only targets intended environments."
+      "risk_notes": "Can probe live services and databases. Ensure it only targets intended environments.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/test-forge",
+        "last_commit_date": "2026-03-11 01:25:17 -0500",
+        "last_commit_message": "chore: commit test-forge state",
+        "code_age_days": 4
+      }
     },
     "elt-forge": {
-      "summary": "Standalone ELT forge instance — same as eidos-elt-forge but with separate Python environment",
+      "summary": "Standalone ELT forge instance \u2014 same as eidos-elt-forge but with separate Python environment",
       "source": "/Users/dshanklinbv/repos-eidos-agi/elt-forge/ (python venv)",
       "maintainer": "internal",
       "tool_count": 0,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["database schemas", "ETL configurations"],
+      "sensitive_data_types": [
+        "database schemas",
+        "ETL configurations"
+      ],
       "recommended_scope": "per-project",
       "scope_rationale": "Duplicate of eidos-elt-forge with different environment; only needed in specific data pipeline projects",
       "documentation_urls": [],
-      "risk_notes": "Same as eidos-elt-forge. Consider consolidating to avoid confusion."
+      "risk_notes": "Same as eidos-elt-forge. Consider consolidating to avoid confusion.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/elt-forge",
+        "last_commit_date": "2026-03-11 01:24:37 -0500",
+        "last_commit_message": "chore: module refactor, auditor improvements, learnings system",
+        "code_age_days": 4
+      }
     },
     "github": {
-      "summary": "GitHub's official MCP server — repos, issues, PRs, projects, code search via Copilot OAuth",
+      "summary": "GitHub's official MCP server \u2014 repos, issues, PRs, projects, code search via Copilot OAuth",
       "source": "https://api.githubcopilot.com/mcp (remote HTTP)",
       "maintainer": "vendor",
       "tool_count": 38,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["source code", "issues", "pull requests", "project data"],
+      "sensitive_data_types": [
+        "source code",
+        "issues",
+        "pull requests",
+        "project data"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "GitHub access is fundamental to all development work; OAuth scopes control actual access",
       "documentation_urls": [
         "https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp/set-up-the-github-mcp-server",
         "https://github.com/github/github-mcp-server"
       ],
-      "risk_notes": "Full GitHub access via PAT. Can create repos, push code, merge PRs, write issues. Token in config has broad scope."
+      "risk_notes": "Full GitHub access via PAT. Can create repos, push code, merge PRs, write issues. Token in config has broad scope.",
+      "installation": {
+        "type": "remote",
+        "url": "https://api.githubcopilot.com/mcp",
+        "code_repo": "https://api.githubcopilot.com/mcp",
+        "code_age_days": 0
+      }
     },
     "helios": {
-      "summary": "Browser automation for AI agents — control logged-in browser sessions with clicks, screenshots, and navigation",
+      "summary": "Browser automation for AI agents \u2014 control logged-in browser sessions with clicks, screenshots, and navigation",
       "source": "/Users/dshanklinbv/repos-eidos-agi/helios/ (Node.js monorepo)",
       "maintainer": "internal",
       "tool_count": 41,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["browser sessions", "cookies", "page content", "screenshots", "credentials in forms"],
+      "sensitive_data_types": [
+        "browser sessions",
+        "cookies",
+        "page content",
+        "screenshots",
+        "credentials in forms"
+      ],
       "recommended_scope": "per-group",
       "scope_rationale": "Browser automation is powerful but dangerous; should only be enabled for projects that need web interaction",
       "documentation_urls": [],
-      "risk_notes": "HIGH SENSITIVITY. Controls real browser with logged-in sessions. Can see passwords, cookies, and interact with any website."
+      "risk_notes": "HIGH SENSITIVITY. Controls real browser with logged-in sessions. Can see passwords, cookies, and interact with any website.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/helios",
+        "last_commit_date": "2026-03-01 17:04:02 -0600",
+        "last_commit_message": "feat: cloud-ready hub \u2014 Postgres storage, Railway deployment",
+        "code_age_days": 13
+      }
     },
     "keeper": {
-      "summary": "Password management — search, retrieve, add, update, and retire credentials from a password vault",
+      "summary": "Password management \u2014 search, retrieve, add, update, and retire credentials from a password vault",
       "source": "/Users/dshanklinbv/repos-personal/password-cleanup/mcp-servers/keeper/server.py",
       "maintainer": "internal",
       "tool_count": 16,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["passwords", "credentials", "API keys", "secret notes"],
+      "sensitive_data_types": [
+        "passwords",
+        "credentials",
+        "API keys",
+        "secret notes"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "Credential management is needed across all projects; provides secure access to passwords and API keys",
       "documentation_urls": [],
-      "risk_notes": "CRITICAL SENSITIVITY. Full access to password vault. Can read, create, update, and delete credentials."
+      "risk_notes": "CRITICAL SENSITIVITY. Full access to password vault. Can read, create, update, and delete credentials.",
+      "installation": {
+        "binary": "/Users/dshanklinbv/.pyenv/versions/3.12.7/bin/python3",
+        "binary_resolves_to": "/Users/dshanklinbv/.pyenv/versions/3.12.7/bin/python3.12",
+        "command": "python3",
+        "args": [
+          "/Users/dshanklinbv/repos-personal/password-cleanup/mcp-servers/keeper/server.py"
+        ],
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/eidos-vault",
+        "last_commit_date": "2026-03-01 21:01:57 -0600",
+        "last_commit_message": "feat: add JWT token issuance and JWKS for platform auth",
+        "code_age_days": 13
+      }
     },
     "outlook": {
-      "summary": "Microsoft Outlook email and calendar — read inbox, compose, reply, search, and check calendar from local cache",
+      "summary": "Microsoft Outlook email and calendar \u2014 read inbox, compose, reply, search, and check calendar from local cache",
       "source": "/Users/dshanklinbv/repos-personal/outlook-mcp/ (Python, reads local Outlook cache)",
       "maintainer": "internal",
       "tool_count": 13,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["emails", "calendar events", "contacts", "business communications"],
+      "sensitive_data_types": [
+        "emails",
+        "calendar events",
+        "contacts",
+        "business communications"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "Work email and calendar access is needed across all projects; reads from local Outlook cache",
       "documentation_urls": [],
-      "risk_notes": "HIGH SENSITIVITY. Reads Outlook local cache — all business emails and calendar. Can compose and reply to emails."
+      "risk_notes": "HIGH SENSITIVITY. Reads Outlook local cache \u2014 all business emails and calendar. Can compose and reply to emails.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-personal/outlook-mcp",
+        "last_commit_date": "2026-02-13 11:48:29 -0600",
+        "last_commit_message": "Rewrite to instruction-based architecture with learning mechanism",
+        "code_age_days": 30
+      }
     },
     "pal": {
-      "summary": "Provider Abstraction Layer — multi-LLM orchestration enabling Claude to consult GPT, Gemini, Grok, and others",
+      "summary": "Provider Abstraction Layer \u2014 multi-LLM orchestration enabling Claude to consult GPT, Gemini, Grok, and others",
       "source": "https://github.com/BeehiveInnovations/pal-mcp-server",
       "maintainer": "vendor",
       "tool_count": 18,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["code snippets sent to external LLMs", "conversation context"],
+      "sensitive_data_types": [
+        "code snippets sent to external LLMs",
+        "conversation context"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "Multi-model consultation is useful everywhere; the user's CLAUDE.md mandates consulting other models",
       "documentation_urls": [
         "https://github.com/BeehiveInnovations/pal-mcp-server"
       ],
-      "risk_notes": "Sends code and conversation context to external LLM providers (OpenAI, Google, etc.). Data leaves local environment."
+      "risk_notes": "Sends code and conversation context to external LLM providers (OpenAI, Google, etc.). Data leaves local environment.",
+      "installation": {
+        "binary": "/Users/dshanklinbv/repos/pal-mcp-server/.pal_venv/bin/python",
+        "binary_resolves_to": "/Users/dshanklinbv/.pyenv/versions/3.12.7/bin/python3.12",
+        "command": "/Users/dshanklinbv/repos/pal-mcp-server/.pal_venv/bin/python",
+        "args": [
+          "/Users/dshanklinbv/repos/pal-mcp-server/server.py"
+        ],
+        "code_repo": "/Users/dshanklinbv/repos/pal-mcp-server",
+        "last_commit_date": "2025-12-15 17:07:31 +0000",
+        "last_commit_message": "chore: sync version to config.py [skip ci]",
+        "code_age_days": 89
+      }
     },
     "railguey": {
-      "summary": "Railway deployment management — deploy, rollback, logs, domains, variables, and service orchestration",
+      "summary": "Railway deployment management \u2014 deploy, rollback, logs, domains, variables, and service orchestration",
       "source": "https://github.com/eidos-agi/railguey (pypi:railguey)",
       "maintainer": "internal",
       "tool_count": 36,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["deployment configs", "environment variables", "service credentials", "TOTP secrets"],
+      "sensitive_data_types": [
+        "deployment configs",
+        "environment variables",
+        "service credentials",
+        "TOTP secrets"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "Railway is the standard deployment platform for all services; needed everywhere for deploys",
       "documentation_urls": [
         "https://github.com/eidos-agi/railguey"
       ],
-      "risk_notes": "Full Railway access — can deploy, rollback, delete projects, and read environment variables including secrets."
+      "risk_notes": "Full Railway access \u2014 can deploy, rollback, delete projects, and read environment variables including secrets.",
+      "installation": {
+        "binary": "/Users/dshanklinbv/.pyenv/versions/3.12.7/bin/railguey",
+        "command": "railguey",
+        "args": [
+          "serve"
+        ],
+        "code_repo": "/Users/dshanklinbv/repos-eidos-agi/railguey",
+        "last_commit_date": "2026-03-13 08:27:04 -0500",
+        "last_commit_message": "Extend domain tool to update existing domains' target port",
+        "code_age_days": 2
+      }
     },
     "reeves-comms": {
-      "summary": "Unified communications aggregator — search, thread, and surface high-attention items across all channels",
+      "summary": "Unified communications aggregator \u2014 search, thread, and surface high-attention items across all channels",
       "source": "/Users/dshanklinbv/repos-personal/reeves-web/reeves/apps/comms/mcp (Python module)",
       "maintainer": "internal",
       "tool_count": 9,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["communications", "messages", "email threads", "attention items"],
+      "sensitive_data_types": [
+        "communications",
+        "messages",
+        "email threads",
+        "attention items"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "Communications are cross-cutting; relevant in any work context for checking messages and alerts",
       "documentation_urls": [],
-      "risk_notes": "Accesses aggregated communications from multiple channels. Contains business and personal messages."
+      "risk_notes": "Accesses aggregated communications from multiple channels. Contains business and personal messages.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-personal/reeves",
+        "last_commit_date": "2026-03-15 00:31:44 -0500",
+        "last_commit_message": "feat: add self-report primitive and identity audit trail to reeves-comms",
+        "code_age_days": 0
+      }
     },
     "reeves-global": {
-      "summary": "Content publishing pipeline — article intake, drafting, editing, and publishing to multiple destinations",
+      "summary": "Content publishing pipeline \u2014 article intake, drafting, editing, and publishing to multiple destinations",
       "source": "/Users/dshanklinbv/repos-personal/reeves-web/reeves/mcp_global/server.py",
       "maintainer": "internal",
       "tool_count": 7,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["article content", "publishing credentials", "draft content"],
+      "sensitive_data_types": [
+        "article content",
+        "publishing credentials",
+        "draft content"
+      ],
       "recommended_scope": "per-group",
       "scope_rationale": "Article publishing is only relevant for content/marketing work, not general development",
       "documentation_urls": [],
-      "risk_notes": "Can publish content to external destinations. Ensure articles are reviewed before pushing."
+      "risk_notes": "Can publish content to external destinations. Ensure articles are reviewed before pushing.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-personal/reeves",
+        "last_commit_date": "2026-03-15 00:31:44 -0500",
+        "last_commit_message": "feat: add self-report primitive and identity audit trail to reeves-comms",
+        "code_age_days": 0
+      }
     },
     "reeves-messages": {
-      "summary": "Apple Messages (iMessage/SMS) management — conversations, search, drafts, identity resolution, and sweep",
+      "summary": "Apple Messages (iMessage/SMS) management \u2014 conversations, search, drafts, identity resolution, and sweep",
       "source": "/Users/dshanklinbv/repos-personal/reeves-messages/ (Python, reeves_messages module)",
       "maintainer": "internal",
       "tool_count": 14,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["text messages", "iMessages", "contact identities", "personal conversations"],
+      "sensitive_data_types": [
+        "text messages",
+        "iMessages",
+        "contact identities",
+        "personal conversations"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "Personal messaging is cross-cutting; identity resolution and message management needed in any context",
       "documentation_urls": [],
-      "risk_notes": "HIGH SENSITIVITY. Reads all Apple Messages. Can draft replies and manage message identities."
+      "risk_notes": "HIGH SENSITIVITY. Reads all Apple Messages. Can draft replies and manage message identities.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-personal/reeves-messages",
+        "last_commit_date": "2026-02-15 16:15:46 -0600",
+        "last_commit_message": "Add CLAUDE.md for AI session guardrails",
+        "code_age_days": 27
+      }
     },
     "reeves-view": {
-      "summary": "Always-on view daemon — push, pin, and restore named views with SSE real-time updates",
+      "summary": "Always-on view daemon \u2014 push, pin, and restore named views with SSE real-time updates",
       "source": "/Users/dshanklinbv/repos-aic/reeves-view/reeves_view/server.py",
       "maintainer": "internal",
       "tool_count": 6,
@@ -291,10 +529,13 @@
       "recommended_scope": "global",
       "scope_rationale": "View management daemon is infrastructure-level; relevant across all projects for displaying data",
       "documentation_urls": [],
-      "risk_notes": "Low risk. Manages display views. No sensitive data access — just layout and rendering."
+      "risk_notes": "Low risk. Manages display views. No sensitive data access \u2014 just layout and rendering.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-aic/reeves-view"
+      }
     },
     "rhea-diagrams": {
-      "summary": "AI-powered diagramming via Excalidraw — create, edit, export diagrams with brand themes and Mermaid import",
+      "summary": "AI-powered diagramming via Excalidraw \u2014 create, edit, export diagrams with brand themes and Mermaid import",
       "source": "http://localhost:9445/mcp (local HTTP server)",
       "maintainer": "internal",
       "tool_count": 37,
@@ -303,48 +544,90 @@
       "recommended_scope": "global",
       "scope_rationale": "Diagramming is useful across all projects for architecture docs, flowcharts, and visual communication",
       "documentation_urls": [],
-      "risk_notes": "Low risk. Creates diagrams locally. No external data transmission."
+      "risk_notes": "Low risk. Creates diagrams locally. No external data transmission.",
+      "installation": {
+        "type": "remote",
+        "url": "http://localhost:9445/mcp",
+        "code_repo": "/Users/dshanklinbv/repos-personal/reeves-diagrams",
+        "last_commit_date": "2026-02-23 16:41:34 -0600",
+        "last_commit_message": "Add fix suggestions to review_layout issues",
+        "code_age_days": 19
+      }
     },
     "taskr": {
-      "summary": "Full-stack work management — tasks, devlogs, skillflows, governance, DNS, secrets (Knox), projects, and recon missions",
+      "summary": "Full-stack work management \u2014 tasks, devlogs, skillflows, governance, DNS, secrets (Knox), projects, and recon missions",
       "source": "/Users/dshanklinbv/repos-aic/taskr/taskr-mcp/server.py",
       "maintainer": "internal",
       "tool_count": 101,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["task data", "devlogs", "secrets (Knox)", "DNS records", "governance decisions", "SQL queries"],
+      "sensitive_data_types": [
+        "task data",
+        "devlogs",
+        "secrets (Knox)",
+        "DNS records",
+        "governance decisions",
+        "SQL queries"
+      ],
       "recommended_scope": "global",
       "scope_rationale": "Central work management system; tasks, devlogs, and governance span all projects",
       "documentation_urls": [],
-      "risk_notes": "HIGH SENSITIVITY. Can execute SQL queries, manage secrets via Knox, modify DNS records, and approve governance decisions."
+      "risk_notes": "HIGH SENSITIVITY. Can execute SQL queries, manage secrets via Knox, modify DNS records, and approve governance decisions.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-aic/taskr",
+        "last_commit_date": "2026-02-27 00:47:50 -0600",
+        "last_commit_message": "clean-sweep: add taskr platform implementation and dependencies",
+        "code_age_days": 16
+      }
     },
     "vercel": {
-      "summary": "Vercel deployment platform — project metadata, logs, and deployment status (read-only)",
+      "summary": "Vercel deployment platform \u2014 project metadata, logs, and deployment status (read-only)",
       "source": "https://mcp.vercel.com (remote HTTP, OAuth)",
       "maintainer": "vendor",
       "tool_count": 0,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["deployment logs", "project metadata", "environment info"],
+      "sensitive_data_types": [
+        "deployment logs",
+        "project metadata",
+        "environment info"
+      ],
       "recommended_scope": "per-group",
       "scope_rationale": "Only relevant for projects deployed to Vercel; not all projects use Vercel",
       "documentation_urls": [
         "https://vercel.com/docs/agent-resources/vercel-mcp",
         "https://github.com/vercel/vercel-mcp-overview"
       ],
-      "risk_notes": "Read-only access to Vercel projects and logs. OAuth-scoped. Low risk but exposes deployment details."
+      "risk_notes": "Read-only access to Vercel projects and logs. OAuth-scoped. Low risk but exposes deployment details.",
+      "installation": {
+        "type": "remote",
+        "url": "https://mcp.vercel.com",
+        "code_repo": "https://mcp.vercel.com",
+        "code_age_days": 0
+      }
     },
     "wrike": {
-      "summary": "Wrike project management — tasks, comments, folders, spaces, and unified search across the AIC workspace",
+      "summary": "Wrike project management \u2014 tasks, comments, folders, spaces, and unified search across the AIC workspace",
       "source": "/Users/dshanklinbv/repos-aic/wrike-mcp/dist/index.js",
       "maintainer": "internal",
       "tool_count": 29,
       "accesses_sensitive_data": true,
-      "sensitive_data_types": ["project tasks", "client data", "business comments", "team assignments"],
+      "sensitive_data_types": [
+        "project tasks",
+        "client data",
+        "business comments",
+        "team assignments"
+      ],
       "recommended_scope": "per-group",
       "scope_rationale": "Wrike contains AIC client and business data; should only be available in AIC work contexts",
       "documentation_urls": [
         "https://www.wrike.com/blog/how-wrikes-mcp-server-works/"
       ],
-      "risk_notes": "Accesses AIC business Wrike workspace. Contains client project data, task assignments, and business communications."
+      "risk_notes": "Accesses AIC business Wrike workspace. Contains client project data, task assignments, and business communications.",
+      "installation": {
+        "code_repo": "/Users/dshanklinbv/repos-aic/wrike-mcp",
+        "last_commit_date": "2026-02-27 00:48:07 -0600",
+        "last_commit_message": "clean-sweep: refactor MCP server tools and handlers",
+        "code_age_days": 16
+      }
     }
   }
 }

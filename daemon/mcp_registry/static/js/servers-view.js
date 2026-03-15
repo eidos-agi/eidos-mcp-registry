@@ -4,6 +4,10 @@
 
 import { state, api, loadData, renderPendingBanner } from './registry.js';
 
+let selectedServer = null;
+let _catalogCache = null;
+let _auditCache = null;
+
 // ── Server tile ─────────────────────────────────────────────────
 
 function createServerTile(name, isGlobal = false) {
@@ -28,9 +32,10 @@ function createServerTile(name, isGlobal = false) {
     document.querySelectorAll('.drop-zone.over').forEach(el => el.classList.remove('over'));
   });
 
-  // Click to edit
+  // Click to view detail
   tile.addEventListener('click', () => {
-    import('./editor.js').then(m => m.openEditor(name));
+    selectedServer = name;
+    renderServersView();
   });
 
   // Name
@@ -456,11 +461,416 @@ function showConfirmDialog(serverName, groupKey, group) {
   cancelBtn.addEventListener('click', doCancel);
 }
 
+// ── Server Detail Page ──────────────────────────────────────────
+
+async function renderServerDetail(container, name) {
+  const srv = state.servers[name] || {};
+  const health = srv.health || 'unknown';
+
+  // Load catalog + audit if not cached
+  if (!_catalogCache) {
+    try { const d = await api.get('/server-catalog'); _catalogCache = d.servers || {}; } catch { _catalogCache = {}; }
+  }
+  if (!_auditCache) {
+    try { const d = await api.get('/scope-audit'); _auditCache = {}; for (const s of d.servers) _auditCache[s.server] = s; } catch { _auditCache = {}; }
+  }
+  const cat = _catalogCache[name] || {};
+  const audit = _auditCache[name] || {};
+
+  // Back button
+  const back = document.createElement('button');
+  back.className = 'btn';
+  back.textContent = '\u2190 Back to Servers';
+  back.style.marginBottom = '16px';
+  back.addEventListener('click', () => { selectedServer = null; renderServersView(); });
+  container.appendChild(back);
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:20px';
+
+  const dot = document.createElement('span');
+  dot.className = `health-dot health-${health.replace(/\s+/g, '-')}`;
+  dot.style.cssText = 'width:12px;height:12px';
+
+  const nameEl = document.createElement('h2');
+  nameEl.style.cssText = 'font-size:22px;font-weight:700;flex:1;margin:0';
+  nameEl.textContent = name;
+
+  const editBtn = document.createElement('button');
+  editBtn.className = 'btn';
+  editBtn.textContent = 'Edit Config';
+  editBtn.addEventListener('click', () => {
+    import('./editor.js').then(m => m.openEditor(name));
+  });
+
+  header.append(dot, nameEl, editBtn);
+  container.appendChild(header);
+
+  // Summary from catalog
+  if (cat.summary) {
+    const summary = document.createElement('p');
+    summary.style.cssText = 'font-size:15px;color:var(--text-dim);line-height:1.6;margin-bottom:20px';
+    summary.textContent = cat.summary;
+    container.appendChild(summary);
+  }
+
+  // Risk alert
+  if (cat.risk_notes) {
+    const isHigh = /HIGH|CRITICAL/i.test(cat.risk_notes);
+    const risk = document.createElement('div');
+    risk.style.cssText = `padding:12px 16px;border-radius:var(--radius);margin-bottom:16px;font-size:13px;line-height:1.5;border:1px solid ${isHigh ? 'var(--red)' : 'var(--border)'};background:${isHigh ? 'rgba(248,81,73,0.08)' : 'var(--bg-card)'};color:${isHigh ? 'var(--red)' : 'var(--text-dim)'}`;
+    const riskIcon = document.createElement('span');
+    riskIcon.textContent = isHigh ? '\uD83D\uDEA8 ' : '\u26A0\uFE0F ';
+    risk.append(riskIcon, document.createTextNode(cat.risk_notes));
+    container.appendChild(risk);
+  }
+
+  // Info cards row
+  const cards = document.createElement('div');
+  cards.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:20px';
+
+  function infoCard(label, value, color) {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px';
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px';
+    lbl.textContent = label;
+    const val = document.createElement('div');
+    val.style.cssText = `font-size:14px;font-weight:600;color:${color || 'var(--text)'}`;
+    val.textContent = value;
+    card.append(lbl, val);
+    return card;
+  }
+
+  cards.appendChild(infoCard('Type', srv.type || 'stdio'));
+  cards.appendChild(infoCard('Health', health, health === 'connected' ? 'var(--green)' : health === 'failed' ? 'var(--red)' : 'var(--text-dim)'));
+  cards.appendChild(infoCard('Tools', cat.tool_count ? `${cat.tool_count} tools` : '?'));
+  cards.appendChild(infoCard('Maintainer', cat.maintainer || 'unknown'));
+  cards.appendChild(infoCard('Scope', audit.status_label || '?', (STATUS_COLORS[audit.status] || 'var(--text-dim)')));
+  if (cat.recommended_scope) {
+    cards.appendChild(infoCard('Recommended', cat.recommended_scope));
+  }
+  container.appendChild(cards);
+
+  // Scope detail
+  if (audit.detail) {
+    const scopeSection = document.createElement('div');
+    scopeSection.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px';
+
+    const scopeTitle = document.createElement('div');
+    scopeTitle.style.cssText = 'font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px';
+    scopeTitle.textContent = 'Scope Status';
+
+    const scopeIcon = document.createElement('span');
+    scopeIcon.style.cssText = 'font-size:16px;margin-right:8px';
+    scopeIcon.textContent = STATUS_ICONS[audit.status] || '\u2022';
+
+    const scopeText = document.createElement('div');
+    scopeText.style.cssText = 'font-size:13px;color:var(--text-dim);line-height:1.6';
+    scopeText.textContent = audit.detail;
+
+    // Scope tags
+    const tags = document.createElement('div');
+    tags.style.cssText = 'display:flex;gap:6px;margin-top:8px;flex-wrap:wrap';
+    if (audit.in_user_scope) {
+      const t = document.createElement('span');
+      t.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:3px;background:rgba(210,153,34,0.15);color:var(--orange)';
+      t.textContent = '~/.claude.json (user scope)';
+      tags.appendChild(t);
+    }
+    if (audit.in_universal) {
+      const t = document.createElement('span');
+      t.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:3px;background:var(--accent-dim);color:var(--accent)';
+      t.textContent = 'Global (universal)';
+      tags.appendChild(t);
+    }
+    for (const g of audit.groups || []) {
+      if (g.is_universal) continue;
+      const t = document.createElement('span');
+      t.style.cssText = 'font-size:11px;padding:2px 8px;border-radius:3px;background:rgba(63,185,80,0.15);color:var(--green)';
+      t.textContent = g.label;
+      tags.appendChild(t);
+    }
+
+    scopeSection.append(scopeTitle, scopeIcon, scopeText, tags);
+
+    // Promote button if needed
+    if (audit.action === 'promote') {
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.style.cssText = 'margin-top:10px;font-size:12px;color:var(--red);border-color:var(--red)';
+      btn.textContent = 'Promote to Project-Only';
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = 'Promoting...';
+        const result = await api.post('/promote', { servers: [name] });
+        btn.textContent = result.removed?.length ? '\u2713 Promoted' : 'Already done';
+        btn.style.color = 'var(--green)';
+        btn.style.borderColor = 'var(--green)';
+        _auditCache = null; // invalidate cache
+      });
+      scopeSection.appendChild(btn);
+    }
+
+    container.appendChild(scopeSection);
+  }
+
+  // Scope rationale from catalog
+  if (cat.scope_rationale) {
+    const rationale = document.createElement('div');
+    rationale.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px';
+    const ratTitle = document.createElement('div');
+    ratTitle.style.cssText = 'font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px';
+    ratTitle.textContent = 'Scope Rationale';
+    const ratText = document.createElement('div');
+    ratText.style.cssText = 'font-size:13px;color:var(--text-dim);line-height:1.6';
+    ratText.textContent = cat.scope_rationale;
+    rationale.append(ratTitle, ratText);
+    container.appendChild(rationale);
+  }
+
+  // Command & config section
+  const configSection = document.createElement('div');
+  configSection.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px';
+
+  const configTitle = document.createElement('div');
+  configTitle.style.cssText = 'font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px';
+  configTitle.textContent = 'Configuration';
+  configSection.appendChild(configTitle);
+
+  if (srv.command) {
+    const cmdRow = document.createElement('div');
+    cmdRow.style.cssText = 'margin-bottom:8px';
+    const cmdLabel = document.createElement('div');
+    cmdLabel.style.cssText = 'font-size:10px;color:var(--text-dim);text-transform:uppercase;margin-bottom:2px';
+    cmdLabel.textContent = 'Command';
+    const cmdVal = document.createElement('code');
+    cmdVal.style.cssText = 'font-size:13px;color:var(--accent);font-family:"SF Mono",Monaco,monospace';
+    cmdVal.textContent = `${srv.command} ${(srv.args || []).join(' ')}`;
+    cmdRow.append(cmdLabel, cmdVal);
+    configSection.appendChild(cmdRow);
+  }
+
+  if (srv.url) {
+    const urlRow = document.createElement('div');
+    urlRow.style.cssText = 'margin-bottom:8px';
+    const urlLabel = document.createElement('div');
+    urlLabel.style.cssText = 'font-size:10px;color:var(--text-dim);text-transform:uppercase;margin-bottom:2px';
+    urlLabel.textContent = 'URL';
+    const urlVal = document.createElement('code');
+    urlVal.style.cssText = 'font-size:13px;color:var(--accent);font-family:"SF Mono",Monaco,monospace';
+    urlVal.textContent = srv.url;
+    urlRow.append(urlLabel, urlVal);
+    configSection.appendChild(urlRow);
+  }
+
+  // Env vars
+  if (srv.env && Object.keys(srv.env).length > 0) {
+    const envLabel = document.createElement('div');
+    envLabel.style.cssText = 'font-size:10px;color:var(--text-dim);text-transform:uppercase;margin-bottom:4px;margin-top:8px';
+    envLabel.textContent = 'Environment Variables';
+    configSection.appendChild(envLabel);
+
+    for (const [k, v] of Object.entries(srv.env)) {
+      const row = document.createElement('div');
+      row.style.cssText = 'font-family:"SF Mono",Monaco,monospace;font-size:12px;padding:3px 0;display:flex;gap:8px';
+      const keyEl = document.createElement('span');
+      keyEl.style.color = 'var(--text)';
+      keyEl.textContent = k;
+      const eqEl = document.createElement('span');
+      eqEl.style.color = 'var(--text-dim)';
+      eqEl.textContent = '=';
+      const valEl = document.createElement('span');
+      const isSecret = ['token', 'key', 'secret', 'password', 'credential', 'auth'].some(p => k.toLowerCase().includes(p));
+      valEl.style.color = isSecret ? 'var(--orange)' : 'var(--text-dim)';
+      valEl.textContent = isSecret ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' : v;
+      row.append(keyEl, eqEl, valEl);
+      if (isSecret) {
+        const badge = document.createElement('span');
+        badge.style.cssText = 'font-size:9px;padding:0 4px;border-radius:2px;background:rgba(210,153,34,0.15);color:var(--orange);font-family:sans-serif';
+        badge.textContent = 'secret';
+        row.appendChild(badge);
+      }
+      configSection.appendChild(row);
+    }
+  }
+
+  container.appendChild(configSection);
+
+  // Group assignments section
+  const groupSection = document.createElement('div');
+  groupSection.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px';
+
+  const groupTitle = document.createElement('div');
+  groupTitle.style.cssText = 'font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px';
+  groupTitle.textContent = 'Group Assignments';
+  groupSection.appendChild(groupTitle);
+
+  let hasAssignment = false;
+  for (const [gk, g] of Object.entries(state.groups)) {
+    if (!(g.servers || []).includes(name)) continue;
+    hasAssignment = true;
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)';
+    const icon = document.createElement('span');
+    icon.textContent = gk === '__universal__' ? '\uD83C\uDF10' : '\uD83D\uDCC1';
+    const label = document.createElement('span');
+    label.style.cssText = 'font-size:13px;font-weight:500;flex:1';
+    label.textContent = g.label || gk;
+    const badge = document.createElement('span');
+    badge.style.cssText = `font-size:10px;padding:1px 6px;border-radius:3px;${gk === '__universal__' ? 'background:var(--accent-dim);color:var(--accent)' : 'background:rgba(63,185,80,0.15);color:var(--green)'}`;
+    badge.textContent = gk === '__universal__' ? 'global' : 'assigned';
+    row.append(icon, label, badge);
+    groupSection.appendChild(row);
+  }
+  if (!hasAssignment) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'font-size:13px;color:var(--text-dim);font-style:italic';
+    empty.textContent = 'Not assigned to any group';
+    groupSection.appendChild(empty);
+  }
+
+  container.appendChild(groupSection);
+
+  // Sensitive data section
+  if (cat.accesses_sensitive_data) {
+    const sensSection = document.createElement('div');
+    sensSection.style.cssText = 'background:var(--bg-card);border:1px solid var(--red);border-radius:var(--radius);padding:16px;margin-bottom:16px';
+
+    const sensTitle = document.createElement('div');
+    sensTitle.style.cssText = 'font-size:12px;font-weight:600;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px';
+    sensTitle.textContent = '\uD83D\uDD12 Sensitive Data Access';
+    sensSection.appendChild(sensTitle);
+
+    if (cat.sensitive_data_types && cat.sensitive_data_types.length > 0) {
+      const tags = document.createElement('div');
+      tags.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px';
+      for (const dtype of cat.sensitive_data_types) {
+        const tag = document.createElement('span');
+        tag.style.cssText = 'font-size:11px;padding:3px 10px;border-radius:4px;background:rgba(248,81,73,0.1);color:var(--red);border:1px solid rgba(248,81,73,0.2)';
+        tag.textContent = dtype;
+        tags.appendChild(tag);
+      }
+      sensSection.appendChild(tags);
+    }
+    container.appendChild(sensSection);
+  }
+
+  // Documentation links
+  if (cat.documentation_urls && cat.documentation_urls.length > 0) {
+    const docSection = document.createElement('div');
+    docSection.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px';
+
+    const docTitle = document.createElement('div');
+    docTitle.style.cssText = 'font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px';
+    docTitle.textContent = 'Documentation';
+    docSection.appendChild(docTitle);
+
+    for (const url of cat.documentation_urls) {
+      const link = document.createElement('div');
+      link.style.cssText = 'padding:4px 0';
+      const a = document.createElement('a');
+      a.style.cssText = 'font-size:13px;color:var(--accent);text-decoration:none;font-family:"SF Mono",Monaco,monospace;word-break:break-all';
+      a.textContent = url;
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      link.appendChild(a);
+      docSection.appendChild(link);
+    }
+    container.appendChild(docSection);
+  }
+
+  // Installation & Code section
+  const inst = cat.installation || {};
+  if (Object.keys(inst).length > 0) {
+    const installSection = document.createElement('div');
+    installSection.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px';
+
+    const installTitle = document.createElement('div');
+    installTitle.style.cssText = 'font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px';
+    installTitle.textContent = 'Installation & Code';
+    installSection.appendChild(installTitle);
+
+    function installRow(label, value, isCode) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)';
+      const lbl = document.createElement('span');
+      lbl.style.cssText = 'font-size:11px;color:var(--text-dim);width:120px;flex-shrink:0;text-transform:uppercase';
+      lbl.textContent = label;
+      const val = document.createElement('span');
+      val.style.cssText = `font-size:12px;${isCode ? 'font-family:"SF Mono",Monaco,monospace;color:var(--accent)' : 'color:var(--text)'};word-break:break-all`;
+      val.textContent = value;
+      row.append(lbl, val);
+      installSection.appendChild(row);
+    }
+
+    if (inst.binary) {
+      installRow('Binary', inst.binary, true);
+      if (inst.binary_resolves_to && inst.binary_resolves_to !== inst.binary) {
+        installRow('Resolves to', inst.binary_resolves_to, true);
+      }
+    }
+    if (inst.url) {
+      installRow('Remote URL', inst.url, true);
+    }
+    if (inst.code_repo) {
+      installRow('Code repo', inst.code_repo, true);
+    }
+    if (inst.last_commit_date) {
+      const age = inst.code_age_days;
+      const ageStr = age === 0 ? 'today' : age === 1 ? '1 day ago' : `${age} days ago`;
+      const ageColor = age > 30 ? 'var(--orange)' : age > 90 ? 'var(--red)' : 'var(--green)';
+
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)';
+      const lbl = document.createElement('span');
+      lbl.style.cssText = 'font-size:11px;color:var(--text-dim);width:120px;flex-shrink:0;text-transform:uppercase';
+      lbl.textContent = 'Last commit';
+      const val = document.createElement('span');
+      val.style.cssText = 'font-size:12px;color:var(--text);display:flex;gap:8px;align-items:center';
+      val.textContent = inst.last_commit_date.substring(0, 10);
+      const ageBadge = document.createElement('span');
+      ageBadge.style.cssText = `font-size:10px;padding:1px 6px;border-radius:3px;color:${ageColor};border:1px solid ${ageColor}`;
+      ageBadge.textContent = ageStr;
+      val.appendChild(ageBadge);
+      row.append(lbl, val);
+      installSection.appendChild(row);
+    }
+    if (inst.last_commit_message) {
+      installRow('Commit msg', inst.last_commit_message, false);
+    }
+
+    container.appendChild(installSection);
+  }
+
+  // Source (fallback if no installation section)
+  if (cat.source && !cat.installation) {
+    const sourceSection = document.createElement('div');
+    sourceSection.style.cssText = 'background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px';
+    const srcTitle = document.createElement('div');
+    srcTitle.style.cssText = 'font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px';
+    srcTitle.textContent = 'Source';
+    const srcVal = document.createElement('code');
+    srcVal.style.cssText = 'font-size:12px;color:var(--text-dim);font-family:"SF Mono",Monaco,monospace;word-break:break-all';
+    srcVal.textContent = cat.source;
+    sourceSection.append(srcTitle, srcVal);
+    container.appendChild(sourceSection);
+  }
+}
+
 // ── Main render ─────────────────────────────────────────────────
 
-export function renderServersView() {
+export async function renderServersView() {
   const container = document.getElementById('view-servers');
   container.textContent = '';
+
+  // Breadcrumb: if a server is selected, show detail page
+  if (selectedServer && state.servers[selectedServer]) {
+    await renderServerDetail(container, selectedServer);
+    return;
+  }
 
   // Two-column layout: drop zones (left) | servers (right)
   const layout = document.createElement('div');
