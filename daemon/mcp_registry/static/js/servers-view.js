@@ -8,6 +8,7 @@ let selectedServer = null;
 let _catalogCache = null;
 let _auditCache = null;
 let _completenessCache = null;
+let _tokenBudgetCache = null;
 
 // ── Server tile ─────────────────────────────────────────────────
 
@@ -88,6 +89,35 @@ function createServerTile(name, isGlobal = false) {
   }
 
   tile.appendChild(badges);
+
+  // Token bar — shows tool count and token cost
+  const tokenInfo = _tokenBudgetCache?.servers?.[name];
+  if (tokenInfo) {
+    const maxTokens = Math.max(...Object.values(_tokenBudgetCache.servers).map(s => s.tokens));
+    const pct = Math.max(3, (tokenInfo.tokens / maxTokens) * 100);
+
+    const tokenRow = document.createElement('div');
+    tokenRow.style.cssText = 'margin-top:6px';
+
+    const label = document.createElement('div');
+    label.style.cssText = 'display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-bottom:2px';
+    const toolsLabel = document.createElement('span');
+    toolsLabel.textContent = `${tokenInfo.tools} tools`;
+    const tokensLabel = document.createElement('span');
+    tokensLabel.textContent = `${tokenInfo.tokens.toLocaleString()} tokens`;
+    label.append(toolsLabel, tokensLabel);
+
+    const track = document.createElement('div');
+    track.style.cssText = 'height:4px;background:var(--bg);border-radius:2px;overflow:hidden';
+    const fill = document.createElement('div');
+    const color = tokenInfo.tokens > 10000 ? 'var(--red)' : tokenInfo.tokens > 5000 ? 'var(--orange)' : 'var(--green)';
+    fill.style.cssText = `height:100%;width:${pct}%;background:${color};border-radius:2px;transition:width 0.3s`;
+    track.appendChild(fill);
+
+    tokenRow.append(label, track);
+    tile.appendChild(tokenRow);
+  }
+
   return tile;
 }
 
@@ -1096,6 +1126,11 @@ export async function renderServersView() {
   if (selectedServer && state.servers[selectedServer]) {
     await renderServerDetail(container, selectedServer);
     return;
+  }
+
+  // Fetch token budget for tile bars (fire-and-forget if not cached)
+  if (!_tokenBudgetCache) {
+    try { _tokenBudgetCache = await api.get('/token-budget'); } catch {}
   }
 
   // Two-column layout: drop zones (left) | servers (right)
