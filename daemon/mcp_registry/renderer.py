@@ -1488,6 +1488,10 @@ footer {
     <span class="nav-rail-icon">&#x2696;</span>
     <span class="nav-rail-label">CLI vs MCP</span>
   </button>
+  <button class="nav-rail-btn" data-tab="token-savings" id="nav-token-savings">
+    <span class="nav-rail-icon">&#x26A1;</span>
+    <span class="nav-rail-label">Tokens</span>
+  </button>
 </nav>
 
 <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
@@ -1537,6 +1541,8 @@ footer {
     <div id="view-rebuttal" style="display:none"></div>
     <!-- CLI vs MCP view -->
     <div id="view-cli-vs-mcp" style="display:none"></div>
+    <!-- Token Savings view -->
+    <div id="view-token-savings" style="display:none"></div>
   </section>
 
   <!-- Hidden tree element for backward compat (nav.js renderTree) -->

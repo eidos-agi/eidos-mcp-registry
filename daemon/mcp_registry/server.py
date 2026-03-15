@@ -137,6 +137,108 @@ async def get_server_catalog():
     return JSONResponse({"error": "Catalog not found"}, status_code=404)
 
 
+TOOL_COUNTS = {
+    "taskr": 102, "helios": 41, "github": 38, "rhea-diagrams": 37,
+    "railguey": 36, "wrike": 29, "backlog": 23, "pal": 18,
+    "keeper": 16, "claude-resume": 15, "reeves-messages": 14,
+    "outlook": 13, "eidos-mail": 10, "reeves-comms": 9,
+    "director-daemon": 8, "cerebro-mcp": 7, "reeves-global": 7,
+    "eidos": 6, "reeves-view": 6, "eidos-test-forge": 5,
+    "eidos-book-forge": 5, "eidos-elt-forge": 5, "elt-forge": 5,
+    "vercel": 5, "eidos-image-forge": 4, "eidos-consent": 3,
+    "context7": 2,
+}
+TOKENS_PER_TOOL = 250
+
+
+@app.get("/token-budget")
+async def token_budget():
+    """Compute token budgets per server, per group, and combined."""
+    snapshot = _store.snapshot()
+    groups = snapshot["groups"]
+    all_servers = snapshot["servers"]
+
+    # Per-server tokens
+    server_tokens = {}
+    for name in all_servers:
+        tools = TOOL_COUNTS.get(name, 5)
+        server_tokens[name] = {
+            "tools": tools,
+            "tokens": tools * TOKENS_PER_TOOL,
+            "cost_per_msg": round(tools * TOKENS_PER_TOOL / 1_000_000 * 3, 4),
+        }
+
+    total_tools = sum(s["tools"] for s in server_tokens.values())
+    total_tokens = total_tools * TOKENS_PER_TOOL
+
+    # Global budget
+    universal = groups.get("__universal__", {}).get("servers", [])
+    global_tools = sum(TOOL_COUNTS.get(s, 5) for s in universal)
+    global_tokens = global_tools * TOKENS_PER_TOOL
+
+    # Per-group budget (own + global)
+    group_budgets = {}
+    for gk, g in groups.items():
+        if gk == "__universal__":
+            continue
+        own_servers = g.get("servers", [])
+        if not own_servers and not universal:
+            continue
+        own_tools = sum(TOOL_COUNTS.get(s, 5) for s in own_servers)
+        own_tokens = own_tools * TOKENS_PER_TOOL
+        combined_tools = global_tools + own_tools
+        combined_tokens = global_tokens + own_tokens
+        group_budgets[gk] = {
+            "label": g.get("label", gk),
+            "own_servers": len(own_servers),
+            "own_tools": own_tools,
+            "own_tokens": own_tokens,
+            "global_servers": len(universal),
+            "global_tools": global_tools,
+            "global_tokens": global_tokens,
+            "total_servers": len(own_servers) + len(universal),
+            "total_tools": combined_tools,
+            "total_tokens": combined_tokens,
+            "cost_per_msg": round(combined_tokens / 1_000_000 * 3, 4),
+            "servers": sorted(own_servers),
+        }
+
+    # Averages and savings
+    active_groups = [g for g in group_budgets.values() if g["own_servers"] > 0]
+    avg_tools = int(sum(g["total_tools"] for g in active_groups) / len(active_groups)) if active_groups else total_tools
+    avg_tokens = avg_tools * TOKENS_PER_TOOL
+    savings_pct = round((1 - avg_tools / total_tools) * 100) if total_tools else 0
+    monthly_savings = round((total_tokens - avg_tokens) / 1_000_000 * 3 * 100 * 30)
+
+    return {
+        "unscoped": {
+            "servers": len(all_servers),
+            "tools": total_tools,
+            "tokens": total_tokens,
+            "cost_per_msg": round(total_tokens / 1_000_000 * 3, 4),
+        },
+        "global": {
+            "servers": len(universal),
+            "tools": global_tools,
+            "tokens": global_tokens,
+            "cost_per_msg": round(global_tokens / 1_000_000 * 3, 4),
+            "server_list": sorted(universal),
+        },
+        "groups": group_budgets,
+        "scoped_average": {
+            "tools": avg_tools,
+            "tokens": avg_tokens,
+            "cost_per_msg": round(avg_tokens / 1_000_000 * 3, 4),
+        },
+        "savings": {
+            "pct": savings_pct,
+            "tokens_per_msg": total_tokens - avg_tokens,
+            "monthly_usd": monthly_savings,
+        },
+        "servers": server_tokens,
+    }
+
+
 @app.get("/server-catalog/completeness")
 async def catalog_completeness():
     """Completeness scores for all servers in the catalog."""

@@ -12,6 +12,7 @@ import './editor.js';    // side-effects: registers event listeners
 import './toast.js';     // side-effects: none yet (placeholder)
 import { initActivity } from './activity.js';
 import { renderWhyMcpView, renderWhyEidosView, renderRebuttalView, renderCliVsMcpView } from './why-pages.js';
+import { renderTokenSavingsView } from './token-savings.js';
 
 // ── State ────────────────────────────────────────────────────────
 
@@ -112,7 +113,7 @@ export function switchTab(tab) {
   state.activeTab = tab;
 
   // Show/hide the 5 view divs
-  const views = ['servers', 'groups', 'store', 'why-mcp', 'why-eidos', 'rebuttal', 'cli-vs-mcp'];
+  const views = ['servers', 'groups', 'store', 'why-mcp', 'why-eidos', 'rebuttal', 'cli-vs-mcp', 'token-savings'];
   for (const v of views) {
     const el = document.getElementById(`view-${v}`);
     if (el) el.style.display = v === tab ? '' : 'none';
@@ -187,6 +188,7 @@ export function renderAll() {
   else if (state.activeTab === 'why-eidos') renderWhyEidosView();
   else if (state.activeTab === 'rebuttal') renderRebuttalView();
   else if (state.activeTab === 'cli-vs-mcp') renderCliVsMcpView();
+  else if (state.activeTab === 'token-savings') renderTokenSavingsView();
 }
 
 // ── Init ─────────────────────────────────────────────────────────
