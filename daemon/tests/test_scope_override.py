@@ -37,10 +37,11 @@ class TestScopeOverrideAwareness:
         data = json.loads(mcp_path.read_text())
 
         # Get the server config from the store (which came from user scope)
+        # mask_secrets=True because deploy now masks secret env vars
         snapshot = store.snapshot()
         for server_name in data["_registry_managed"]:
             deployed = data["mcpServers"][server_name]
-            source = _build_server_entry(snapshot["servers"][server_name])
+            source = _build_server_entry(snapshot["servers"][server_name], mask_secrets=True)
             assert deployed == source, (
                 f"Deployed config for {server_name} doesn't match source. "
                 f"This means project scope will override user scope with DIFFERENT config.\n"
@@ -90,7 +91,7 @@ class TestOverrideDetection:
                     # This server will be overridden at project scope
                     # The deployed config should match user scope exactly
                     deployed_entry = change["content"]["mcpServers"][srv_name]
-                    source_entry = _build_server_entry(srv)
+                    source_entry = _build_server_entry(srv, mask_secrets=True)
                     assert deployed_entry == source_entry, (
                         f"Server {srv_name} would create a scope override with "
                         f"DIFFERENT config than user scope"

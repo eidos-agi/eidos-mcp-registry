@@ -30,9 +30,17 @@ def _has_secrets(env: dict) -> list[str]:
 _VALID_ENTRY_KEYS = {"type", "command", "args", "env", "url", "headers", "oauth"}
 
 
-def _build_server_entry(srv: dict) -> dict:
+def _build_server_entry(srv: dict, mask_secrets: bool = False) -> dict:
     """Build a single server entry, keeping only Claude Code-valid keys."""
-    return {k: v for k, v in srv.items() if k in _VALID_ENTRY_KEYS and v}
+    entry = {k: v for k, v in srv.items() if k in _VALID_ENTRY_KEYS and v}
+    if mask_secrets and "env" in entry:
+        secret_keys = _has_secrets(entry["env"])
+        if secret_keys:
+            masked_env = dict(entry["env"])
+            for k in secret_keys:
+                masked_env[k] = f"${{{k}}}"
+            entry["env"] = masked_env
+    return entry
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
@@ -47,17 +55,19 @@ def _deep_merge(base: dict, override: dict) -> dict:
 
 
 def _build_mcp_json(server_names: list[str], all_servers: dict,
-                    group_config: dict | None = None) -> dict:
+                    group_config: dict | None = None,
+                    mask_secrets: bool = False) -> dict:
     """Build the registry's server entries for a list of server names.
 
     Args:
         group_config: Optional per-server config overrides from the group.
                       e.g. {"cerebro-mcp": {"env": {"SUPABASE_URL": "..."}}}
+        mask_secrets: If True, replace secret env values with ${VAR} references.
     """
     mcp_servers = {}
     for name in server_names:
         srv = all_servers.get(name, {})
-        entry = _build_server_entry(srv)
+        entry = _build_server_entry(srv, mask_secrets=mask_secrets)
         # Apply group-level config overrides
         if group_config and name in group_config:
             override = {k: v for k, v in group_config[name].items()
@@ -125,7 +135,8 @@ def preview(store) -> dict:
             if not effective:
                 continue
             group_config = group.get("server_config")
-            ours = _build_mcp_json(effective, all_servers, group_config)
+            ours = _build_mcp_json(effective, all_servers, group_config,
+                                   mask_secrets=True)
             managed_names = set(effective)
             mcp_path = str(Path(repo) / ".mcp.json")
 
@@ -222,3 +233,67 @@ def deploy(store, on_progress=None, only_groups: list[str] | None = None) -> dic
     # Future: add a separate "Promote" action with explicit confirmation.
 
     return results
+
+
+def check_gitignore_status(store, group_key: str) -> dict:
+    """Report .gitignore status for .mcp.json across all repos in a group."""
+    snapshot = store.snapshot()
+    group = snapshot["groups"].get(group_key)
+    if not group or not group.get("path"):
+        return {"error": "Group not found or has no path"}
+
+    repos = list_repos_in_group(group["path"])
+    ignored = 0
+    not_ignored = 0
+
+    for repo in repos:
+        gitignore = Path(repo) / ".gitignore"
+        if gitignore.exists():
+            try:
+                if ".mcp.json" in gitignore.read_text():
+                    ignored += 1
+                    continue
+            except OSError:
+                pass
+        not_ignored += 1
+
+    return {
+        "group": group_key,
+        "total": len(repos),
+        "ignored": ignored,
+        "not_ignored": not_ignored,
+    }
+
+
+def add_gitignore_bulk(store, group_key: str) -> dict:
+    """Add .mcp.json to .gitignore for all repos in a group."""
+    snapshot = store.snapshot()
+    group = snapshot["groups"].get(group_key)
+    if not group or not group.get("path"):
+        return {"error": "Group not found or has no path"}
+
+    repos = list_repos_in_group(group["path"])
+    added = []
+    already = []
+    errors = []
+
+    for repo in repos:
+        gitignore = Path(repo) / ".gitignore"
+        try:
+            if gitignore.exists():
+                content = gitignore.read_text()
+                if ".mcp.json" in content:
+                    already.append(repo)
+                    continue
+                # Append to existing
+                if not content.endswith("\n"):
+                    content += "\n"
+                content += ".mcp.json\n"
+                gitignore.write_text(content)
+            else:
+                gitignore.write_text(".mcp.json\n")
+            added.append(repo)
+        except OSError as e:
+            errors.append({"repo": repo, "error": str(e)})
+
+    return {"added": len(added), "already": len(already), "errors": errors}

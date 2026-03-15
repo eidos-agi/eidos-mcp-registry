@@ -24,7 +24,6 @@ REGISTRY_HTML = """\
   --orange: #d29922;
   --border: #30363d;
   --radius: 6px;
-  --rail-width: 240px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -33,7 +32,6 @@ body {
   color: var(--text);
   height: 100vh;
   display: flex;
-  flex-direction: column;
   overflow: hidden;
 }
 
@@ -65,16 +63,318 @@ header h1 span { color: var(--accent); }
 .btn-primary:hover { opacity: 0.9; }
 .btn-danger { background: var(--red); color: #fff; border-color: var(--red); }
 
-/* ── Main layout ───────────────────────────────────────────── */
-.main {
+/* ── Nav Rail ─────────────────────────────────────────────── */
+.nav-rail {
+  width: 56px;
+  min-width: 56px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
   display: flex;
-  flex: 1;
-  overflow: hidden;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.nav-rail-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--text-dim);
+  transition: background 0.15s, color 0.15s;
+  font-size: 10px;
+}
+.nav-rail-btn:hover { background: var(--bg-hover); color: var(--text); }
+.nav-rail-btn.active { background: var(--accent-dim); color: var(--accent); }
+.nav-rail-icon { font-size: 18px; line-height: 1; }
+.nav-rail-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ── Pending Banner ───────────────────────────────────────── */
+.pending-banner {
+  display: none;
+  padding: 8px 16px;
+  background: rgba(210, 153, 34, 0.1);
+  border-bottom: 1px solid rgba(210, 153, 34, 0.3);
+  color: var(--orange);
+  font-size: 13px;
+  align-items: center;
+  gap: 12px;
+  animation: slideDown 0.2s ease;
+}
+.pending-banner.active { display: flex; }
+.pending-banner-text { flex: 1; }
+.pending-banner .btn { font-size: 12px; }
+
+/* ── Activity Panel ───────────────────────────────────────── */
+.activity-panel {
+  position: fixed;
+  bottom: 0;
+  left: 56px;
+  right: 0;
+  max-height: 300px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  transform: translateY(100%);
+  transition: transform 0.25s ease;
+  z-index: 100;
+  overflow-y: auto;
+}
+.activity-panel.open { transform: translateY(0); }
+.activity-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+}
+.activity-panel-header h4 { font-size: 13px; font-weight: 600; }
+.activity-list { padding: 8px 0; }
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.activity-item:hover { background: var(--bg-hover); }
+.activity-icon { width: 20px; text-align: center; flex-shrink: 0; }
+.activity-time { flex-shrink: 0; font-size: 11px; opacity: 0.6; }
+.activity-text { flex: 1; }
+
+/* ── Toast Container ──────────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+}
+.toast {
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast-success { border-color: var(--green); }
+.toast-error { border-color: var(--red); }
+.toast-warning { border-color: var(--orange); }
+
+/* ── Confirm Dialog ───────────────────────────────────────── */
+.confirm-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 400;
+  align-items: center;
+  justify-content: center;
+}
+.confirm-overlay.active { display: flex; }
+.confirm-dialog {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 420px;
+  width: 90%;
+}
+.confirm-dialog h3 { font-size: 16px; margin-bottom: 8px; }
+.confirm-dialog p { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+.confirm-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ── Global Section ───────────────────────────────────────── */
+.global-section {
+  background: rgba(88, 166, 255, 0.05);
+  border: 1px solid rgba(88, 166, 255, 0.15);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+.global-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.global-icon { font-size: 20px; }
+.global-title { font-size: 14px; font-weight: 600; color: var(--accent); }
+.global-subtitle { font-size: 11px; color: var(--text-dim); }
+.global-servers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
 }
 
-/* ── Tree (left rail) ──────────────────────────────────────── */
+/* ── Group Cards (Groups view) ────────────────────────────── */
+.group-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.group-card:hover { border-color: var(--accent); }
+.group-card-header { display: flex; align-items: center; gap: 10px; }
+.group-card-icon { font-size: 18px; }
+.group-card-name { font-size: 14px; font-weight: 600; flex: 1; }
+.group-card-stats { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+.group-card-path { font-size: 11px; color: var(--text-dim); font-family: monospace; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Server Tile (Servers view) ───────────────────────────── */
+.server-tile {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  cursor: grab;
+  transition: border-color 0.15s, transform 0.1s;
+  position: relative;
+}
+.server-tile:hover { border-color: var(--accent); }
+.server-tile.dragging { opacity: 0.4; transform: scale(0.95); }
+.server-tile-name { font-size: 14px; font-weight: 600; }
+.server-tile-meta { font-size: 11px; color: var(--text-dim); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+.server-tile-badges { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.type-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.group-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.secret-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--orange);
+}
+
+/* ── Drop Zone ────────────────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 12px;
+  transition: border-color 0.15s, background 0.15s;
+  margin-top: 8px;
+}
+.drop-zone.over {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* ── Gitignore Banner ─────────────────────────────────────── */
+.gitignore-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(210, 153, 34, 0.08);
+  border: 1px solid rgba(210, 153, 34, 0.2);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--orange);
+  margin-bottom: 12px;
+}
+.gitignore-banner .btn { font-size: 11px; padding: 3px 10px; }
+
+/* ── Accordion (group detail) ─────────────────────────────── */
+.accordion-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.accordion-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.accordion-header:hover { background: var(--bg-hover); }
+.accordion-name { font-weight: 500; font-size: 13px; flex: 1; }
+.accordion-chevron {
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: transform 0.15s;
+}
+.accordion-chevron.open { transform: rotate(90deg); }
+.accordion-body {
+  display: none;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+}
+.accordion-body.open { display: block; }
+.accordion-section { margin-bottom: 10px; }
+.accordion-section-title { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+/* ── Deploy History ───────────────────────────────────────── */
+.deploy-history-list { margin-top: 16px; }
+.deploy-history-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.deploy-history-item:hover { background: var(--bg-hover); }
+.deploy-history-time { color: var(--text-dim); flex-shrink: 0; }
+.deploy-history-info { flex: 1; }
+.btn-rollback {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.btn-rollback:hover { color: var(--orange); border-color: var(--orange); }
+
+/* ── Tree (kept for backward compat — nav.js still renders) ── */
 .tree {
-  width: var(--rail-width);
+  width: 240px;
   min-width: 160px;
   max-width: 500px;
   border-right: 1px solid var(--border);
@@ -259,6 +559,207 @@ header h1 span { color: var(--accent); }
 .health-failed { background: var(--red); }
 .health-unknown { background: var(--text-dim); }
 .health-needs-auth { background: var(--orange); }
+.health-needs-authentication { background: var(--orange); }
+
+/* ── Group Config Page ────────────────────────────────────── */
+.group-config {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 700px;
+}
+.gc-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.gc-path {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: monospace;
+}
+.gc-missing {
+  font-size: 11px;
+  color: var(--red);
+  background: rgba(248,81,73,0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.gc-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.gc-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.gc-section-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+.gc-server-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gc-available {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.gc-server-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--bg);
+  font-size: 13px;
+}
+.gc-server-row.inherited {
+  opacity: 0.7;
+}
+.gc-server-row:hover {
+  background: var(--bg-hover);
+}
+.gc-server-name {
+  font-weight: 500;
+  flex: 1;
+}
+.gc-server-type {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.gc-badge-inherited {
+  font-size: 10px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+.gc-badge-other {
+  font-size: 10px;
+  color: var(--orange);
+  background: rgba(210,153,34,0.15);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+.gc-btn-config {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.gc-btn-config:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.gc-empty {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 8px;
+  font-style: italic;
+}
+
+/* Toggle switch */
+.gc-toggle {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.gc-toggle input { opacity: 0; width: 0; height: 0; }
+.gc-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--border);
+  border-radius: 18px;
+  transition: background 0.2s;
+}
+.gc-toggle-slider::before {
+  content: "";
+  position: absolute;
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background: var(--text-dim);
+  border-radius: 50%;
+  transition: transform 0.2s, background 0.2s;
+}
+.gc-toggle input:checked + .gc-toggle-slider {
+  background: var(--green);
+}
+.gc-toggle input:checked + .gc-toggle-slider::before {
+  transform: translateX(14px);
+  background: white;
+}
+
+/* Effective tags */
+.gc-effective {
+  background: rgba(88,166,255,0.05);
+  border-color: rgba(88,166,255,0.2);
+}
+.gc-effective-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gc-tag {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+.gc-tag-inherited {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.gc-tag-assigned {
+  background: rgba(63,185,80,0.15);
+  color: var(--green);
+}
+
+/* Deploy button */
+.gc-deploy {
+  display: flex;
+  justify-content: flex-end;
+}
+.btn-deploy-group {
+  background: var(--green);
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-deploy-group:hover {
+  filter: brightness(1.1);
+}
+.btn-deploy-group:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-deploy-group.deployed {
+  background: var(--accent);
+}
+.btn-deploy-group.pending {
+  background: var(--orange);
+  color: #000;
+}
 
 /* ── Footer ────────────────────────────────────────────────── */
 footer {
@@ -699,40 +1200,98 @@ footer {
 </head>
 <body>
 
-<header>
-  <h1><span>EIDOS</span> MCP REGISTRY</h1>
-  <div class="header-actions">
-    <button class="btn" id="btn-scan">Scan</button>
-    <button class="btn btn-primary" id="btn-deploy">Deploy</button>
-  </div>
-</header>
+<nav class="nav-rail" id="nav-rail">
+  <button class="nav-rail-btn active" data-tab="servers" id="nav-servers">
+    <span class="nav-rail-icon">&#x229E;</span>
+    <span class="nav-rail-label">Servers</span>
+  </button>
+  <button class="nav-rail-btn" data-tab="groups" id="nav-groups">
+    <span class="nav-rail-icon">&#x25A4;</span>
+    <span class="nav-rail-label">Groups</span>
+  </button>
+  <button class="nav-rail-btn" data-tab="store" id="nav-store">
+    <span class="nav-rail-icon">&#x25C9;</span>
+    <span class="nav-rail-label">Store</span>
+  </button>
+</nav>
 
-<div class="main">
-  <nav class="tree" id="tree"></nav>
-  <div class="tree-resize" id="tree-resize"></div>
-  <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
-    <!-- Scan banner (inline, non-blocking) -->
-    <div class="scan-banner" id="scan-banner">
-      <div class="scan-banner-bar" id="scan-banner-bar">
-        <span class="scan-banner-icon"><span class="scan-spinner"></span></span>
-        <span class="scan-banner-text" id="scan-banner-text">Scanning...</span>
-        <button class="btn scan-banner-toggle" id="scan-toggle">Details</button>
-      </div>
-      <div class="scan-banner-detail" id="scan-banner-detail">
-        <div class="scan-log" id="scan-log"></div>
-      </div>
+<div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+  <!-- Pending banner -->
+  <div class="pending-banner" id="pending-banner">
+    <span class="pending-banner-text" id="pending-text">0 groups have pending changes</span>
+    <button class="btn btn-primary" id="btn-deploy-all" style="font-size:12px;padding:4px 12px">Deploy All</button>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <h1 id="view-title"><span>EIDOS</span> MCP REGISTRY</h1>
+    <div class="header-actions">
+      <button class="btn" id="btn-scan">Scan</button>
+      <button class="btn btn-primary" id="btn-deploy">Deploy</button>
     </div>
-    <section class="cards-area" id="cards-area">
+  </header>
+
+  <!-- Scan banner (inline, non-blocking) -->
+  <div class="scan-banner" id="scan-banner">
+    <div class="scan-banner-bar" id="scan-banner-bar">
+      <span class="scan-banner-icon"><span class="scan-spinner"></span></span>
+      <span class="scan-banner-text" id="scan-banner-text">Scanning...</span>
+      <button class="btn scan-banner-toggle" id="scan-toggle">Details</button>
+    </div>
+    <div class="scan-banner-detail" id="scan-banner-detail">
+      <div class="scan-log" id="scan-log"></div>
+    </div>
+  </div>
+
+  <!-- Content area (switches by tab) -->
+  <section class="cards-area" id="cards-area">
+    <!-- Servers view (default) -->
+    <div id="view-servers">
       <h2 id="cards-title">All Servers</h2>
       <div class="cards-grid" id="cards-grid"></div>
-    </section>
-  </div>
+    </div>
+    <!-- Groups view -->
+    <div id="view-groups" style="display:none"></div>
+    <!-- Store view -->
+    <div id="view-store" style="display:none"></div>
+  </section>
+
+  <!-- Hidden tree element for backward compat (nav.js renderTree) -->
+  <div id="tree" style="display:none"></div>
+
+  <!-- Footer with activity toggle -->
+  <footer>
+    <span id="stats">Loading...</span>
+    <span style="display:flex;gap:12px;align-items:center">
+      <span id="deploy-status"></span>
+      <button class="btn" id="btn-activity" style="font-size:11px;padding:3px 10px">Activity</button>
+    </span>
+  </footer>
 </div>
 
-<footer>
-  <span id="stats">Loading...</span>
-  <span id="deploy-status"></span>
-</footer>
+<!-- Activity panel (bottom drawer) -->
+<div class="activity-panel" id="activity-panel">
+  <div class="activity-panel-header">
+    <h4>Activity</h4>
+    <button class="btn" id="btn-activity-close" style="font-size:11px;padding:2px 8px">Close</button>
+  </div>
+  <div class="activity-list" id="activity-list"></div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Confirm dialog -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-dialog" id="confirm-dialog">
+    <h3 id="confirm-title">Confirm Assignment</h3>
+    <p id="confirm-text">Are you sure?</p>
+    <div class="confirm-dialog-actions">
+      <button class="btn" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-primary" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
 
 <!-- Deploy overlay -->
 <div class="overlay" id="deploy-overlay">

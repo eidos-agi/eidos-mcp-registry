@@ -19,6 +19,9 @@ from mcp_registry.events import AsyncEventBus, sse_generator, wire_store_to_bus
 from mcp_registry.scanner import full_scan
 from mcp_registry.health import health_monitor
 from mcp_registry.deployer import preview as deploy_preview, deploy as deploy_execute
+from mcp_registry.deployer import check_gitignore_status, add_gitignore_bulk
+from mcp_registry import activity
+from mcp_registry import deploy_history
 from mcp_registry.renderer import REGISTRY_HTML
 
 import sys
@@ -135,6 +138,7 @@ async def update_server(name: str, body: dict):
     if name not in servers:
         return JSONResponse({"error": "Server not found"}, status_code=404)
     _store.upsert_server(name, body)
+    activity.log_event("config_change", {"server": name})
     return {"ok": True, "server": name}
 
 
@@ -160,6 +164,7 @@ async def assign_server(req: AssignRequest):
     ok = _store.assign(req.server, req.group)
     if not ok:
         return JSONResponse({"error": "Invalid server or group"}, status_code=400)
+    activity.log_event("assign", {"server": req.server, "group": req.group})
     return {"ok": True}
 
 
@@ -168,6 +173,7 @@ async def unassign_server(req: AssignRequest):
     ok = _store.unassign(req.server, req.group)
     if not ok:
         return JSONResponse({"error": "Server not in group"}, status_code=400)
+    activity.log_event("unassign", {"server": req.server, "group": req.group})
     return {"ok": True}
 
 
@@ -273,14 +279,29 @@ async def deploy_endpoint(req: DeployRequest | None = None):
     async with _deploy_lock:
         selected_groups = req.groups if req else None
 
+        # Snapshot before deploy for rollback
+        loop = asyncio.get_event_loop()
+        try:
+            changes_for_snapshot = await loop.run_in_executor(None, deploy_preview, _store)
+            if changes_for_snapshot:
+                await loop.run_in_executor(
+                    None, deploy_history.snapshot_before_deploy, changes_for_snapshot
+                )
+        except Exception as e:
+            logger.warning("Failed to create deploy snapshot: %s", e)
+
         def on_progress(info):
             if _bus:
                 _bus.publish("registry", json.dumps({"event": "deploy_progress", **info}))
 
-        loop = asyncio.get_event_loop()
         results = await loop.run_in_executor(
             None, deploy_execute, _store, on_progress, selected_groups
         )
+        activity.log_event("deploy", {
+            "groups": selected_groups,
+            "written": len(results.get("written", [])),
+            "errors": len(results.get("errors", [])),
+        })
         return results
 
 
@@ -301,6 +322,47 @@ async def verify_group(group_key: str):
         "drift": len(group_changes),
         "files": list(group_changes.keys())[:10],
     }
+
+
+# ── Activity ─────────────────────────────────────────────────────
+
+@app.get("/activity")
+async def get_activity(limit: int = 50):
+    return activity.get_events(limit)
+
+
+# ── Deploy History & Rollback ────────────────────────────────────
+
+@app.get("/deploy/history")
+async def get_deploy_history(limit: int = 20):
+    return deploy_history.list_history(limit)
+
+
+@app.post("/deploy/rollback/{snapshot_id}")
+async def rollback_deploy(snapshot_id: str):
+    result = deploy_history.rollback(snapshot_id)
+    if "error" in result:
+        return JSONResponse({"error": result["error"]}, status_code=404)
+    activity.log_event("deploy", {"action": "rollback", "snapshot_id": snapshot_id, **result})
+    return result
+
+
+# ── Gitignore Bulk ───────────────────────────────────────────────
+
+@app.post("/groups/{group_key}/gitignore")
+async def add_gitignore(group_key: str):
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, add_gitignore_bulk, _store, group_key)
+    if "error" in result:
+        return JSONResponse({"error": result["error"]}, status_code=404)
+    activity.log_event("gitignore_bulk", {"group": group_key, **result})
+    return result
+
+
+@app.get("/groups/{group_key}/gitignore")
+async def get_gitignore_status(group_key: str):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, check_gitignore_status, _store, group_key)
 
 
 # ── SSE ──────────────────────────────────────────────────────────
