@@ -1492,6 +1492,10 @@ footer {
     <span class="nav-rail-icon">&#x26A1;</span>
     <span class="nav-rail-label">Tokens</span>
   </button>
+  <button class="nav-rail-btn" data-tab="lazy-loading" id="nav-lazy-loading">
+    <span class="nav-rail-icon">&#x23F3;</span>
+    <span class="nav-rail-label">Lazy Load</span>
+  </button>
 </nav>
 
 <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
@@ -1543,6 +1547,8 @@ footer {
     <div id="view-cli-vs-mcp" style="display:none"></div>
     <!-- Token Savings view -->
     <div id="view-token-savings" style="display:none"></div>
+    <!-- Lazy Loading view -->
+    <div id="view-lazy-loading" style="display:none"></div>
   </section>
 
   <!-- Hidden tree element for backward compat (nav.js renderTree) -->

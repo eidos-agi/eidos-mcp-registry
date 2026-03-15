@@ -160,48 +160,498 @@ export async function renderTokenSavingsView() {
 
   // ── The Snowball Effect
   page.appendChild(sectionTitle('The Snowball Effect'));
-  page.appendChild(el('p', 'font-size:14px;color:var(--text-dim);line-height:1.7;margin-bottom:12px',
-    "Tool schemas aren't a one-time cost. They compound across every message in a session. Here's how context fills up:"));
+  page.appendChild(richPara([
+    'Tool schemas are re-sent in ', {bold: 'every single API call'}, '. Message #50 doesn\'t pay the tool tax once \u2014 it\'s the ',
+    {bold: '50th time'}, ' you\'ve paid it. The cumulative cost is multiplicative, not additive.'
+  ]));
 
+  const avgMsgTokens = 2500; // avg conversation per turn (user + assistant)
   const contextLimit = 200000;
-  const avgMsgTokens = 2500;
   const checkpoints = [1, 10, 25, 50, 75, 100];
+  const unscopedToolTokens = u.tokens;
+  const scopedToolTokens = data.scoped_average.tokens;
+  const inputPricePerM = 3; // Sonnet input $/MTok
 
-  const simHeader = el('div', 'display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;padding:8px 0;border-bottom:2px solid var(--border);font-size:11px;color:var(--text-dim);text-transform:uppercase');
-  simHeader.appendChild(el('span', '', 'Message'));
-  simHeader.appendChild(el('span', '', 'Unscoped context'));
-  simHeader.appendChild(el('span', '', 'Scoped context'));
-  simHeader.appendChild(el('span', '', 'Savings'));
-  page.appendChild(simHeader);
+  // ── Chart rendering utilities
+  const CHART_W = 800;
+  const CHART_H = 300;
+  const PAD = { top: 30, right: 20, bottom: 50, left: 70 };
+  const COLORS = { red: '#f85149', green: '#3fb950', orange: '#d29922', blue: '#58a6ff', gray: '#8b949e', grid: '#30363d', bg: '#161b22', label: '#8b949e' };
 
+  function createCanvas(title) {
+    const wrap = el('div', 'margin:24px 0');
+    wrap.appendChild(el('div', 'font-size:14px;font-weight:600;color:var(--accent);margin-bottom:8px', title));
+    const canvas = document.createElement('canvas');
+    canvas.width = CHART_W;
+    canvas.height = CHART_H;
+    canvas.style.cssText = 'width:100%;max-width:800px;height:auto;border-radius:6px;background:#161b22';
+    wrap.appendChild(canvas);
+    return { wrap, canvas };
+  }
+
+  function drawLineChart(canvas, config) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const plotW = w - PAD.left - PAD.right;
+    const plotH = h - PAD.top - PAD.bottom;
+
+    // Background
+    ctx.fillStyle = COLORS.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Axis ranges
+    const xMin = config.xMin || 0;
+    const xMax = config.xMax;
+    const yMin = config.yMin || 0;
+    const yMax = config.yMax;
+
+    function toX(v) { return PAD.left + ((v - xMin) / (xMax - xMin)) * plotW; }
+    function toY(v) { return PAD.top + plotH - ((v - yMin) / (yMax - yMin)) * plotH; }
+
+    // Grid lines (horizontal)
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth = 1;
+    const yTicks = config.yTicks || 5;
+    for (let i = 0; i <= yTicks; i++) {
+      const v = yMin + (yMax - yMin) * i / yTicks;
+      const y = toY(v);
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, y);
+      ctx.lineTo(w - PAD.right, y);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.label;
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(config.yFormat(v), PAD.left - 8, y);
+    }
+
+    // X axis labels
+    const xLabelStep = config.xLabelStep || 20;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (let x = xMin; x <= xMax; x += xLabelStep) {
+      ctx.fillStyle = COLORS.label;
+      ctx.fillText(String(x), toX(x), h - PAD.bottom + 8);
+    }
+
+    // X axis label
+    if (config.xLabel) {
+      ctx.fillStyle = COLORS.label;
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(config.xLabel, PAD.left + plotW / 2, h - 6);
+    }
+
+    // Horizontal dashed reference lines
+    if (config.hLines) {
+      for (const hl of config.hLines) {
+        ctx.save();
+        ctx.strokeStyle = hl.color || COLORS.gray;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        const y = toY(hl.value);
+        if (y >= PAD.top && y <= PAD.top + plotH) {
+          ctx.beginPath();
+          ctx.moveTo(PAD.left, y);
+          ctx.lineTo(w - PAD.right, y);
+          ctx.stroke();
+          ctx.fillStyle = hl.color || COLORS.gray;
+          ctx.font = '10px system-ui, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(hl.label, PAD.left + 4, y - 3);
+        }
+        ctx.restore();
+      }
+    }
+
+    // Draw lines
+    for (const series of config.series) {
+      ctx.strokeStyle = series.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      let started = false;
+      for (let i = 0; i < series.data.length; i++) {
+        const px = toX(series.data[i][0]);
+        const py = toY(Math.min(series.data[i][1], yMax));
+        if (!started) { ctx.moveTo(px, py); started = true; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+
+      // Markers (optional)
+      if (series.markers) {
+        for (const m of series.markers) {
+          const mx = toX(m.x);
+          const my = toY(Math.min(m.y, yMax));
+          ctx.fillStyle = series.color;
+          ctx.beginPath();
+          ctx.arc(mx, my, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = COLORS.label;
+          ctx.font = '10px system-ui, sans-serif';
+          ctx.textAlign = m.align || 'left';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(m.label, mx + (m.align === 'right' ? -6 : 6), my - 6);
+        }
+      }
+    }
+
+    // Legend
+    if (config.legend) {
+      const legendY = 12;
+      let legendX = PAD.left + 10;
+      ctx.font = '11px system-ui, sans-serif';
+      for (const item of config.legend) {
+        ctx.fillStyle = item.color;
+        ctx.fillRect(legendX, legendY - 4, 14, 3);
+        legendX += 18;
+        ctx.fillStyle = COLORS.label;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.label, legendX, legendY);
+        legendX += ctx.measureText(item.label).width + 20;
+      }
+    }
+  }
+
+  function drawBarChart(canvas, config) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const plotW = w - PAD.left - PAD.right;
+    const plotH = h - PAD.top - PAD.bottom;
+
+    ctx.fillStyle = COLORS.bg;
+    ctx.fillRect(0, 0, w, h);
+
+    const yMin = 0;
+    const yMax = config.yMax;
+    function toY(v) { return PAD.top + plotH - ((v - yMin) / (yMax - yMin)) * plotH; }
+
+    // Y grid
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth = 1;
+    const yTicks = config.yTicks || 5;
+    for (let i = 0; i <= yTicks; i++) {
+      const v = yMax * i / yTicks;
+      const y = toY(v);
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, y);
+      ctx.lineTo(w - PAD.right, y);
+      ctx.stroke();
+      ctx.fillStyle = COLORS.label;
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(config.yFormat(v), PAD.left - 8, y);
+    }
+
+    // Draw groups
+    const groups = config.groups;
+    const groupWidth = plotW / groups.length;
+    const barWidth = groupWidth / (groups[0].bars.length + 1);
+
+    for (let gi = 0; gi < groups.length; gi++) {
+      const gx = PAD.left + gi * groupWidth;
+      // Group label
+      ctx.fillStyle = COLORS.label;
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(groups[gi].label, gx + groupWidth / 2, h - PAD.bottom + 8);
+
+      for (let bi = 0; bi < groups[gi].bars.length; bi++) {
+        const bar = groups[gi].bars[bi];
+        const bx = gx + (bi + 0.5) * barWidth;
+        const by = toY(bar.value);
+        const bh = toY(0) - by;
+        ctx.fillStyle = bar.color;
+        ctx.fillRect(bx, by, barWidth * 0.8, bh);
+
+        // Value label on bar
+        ctx.fillStyle = '#fff';
+        ctx.font = '11px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(bar.label, bx + barWidth * 0.4, by - 4);
+      }
+    }
+
+    // Legend
+    if (config.legend) {
+      let legendX = PAD.left + 10;
+      const legendY = 14;
+      ctx.font = '11px system-ui, sans-serif';
+      for (const item of config.legend) {
+        ctx.fillStyle = item.color;
+        ctx.fillRect(legendX, legendY - 5, 12, 10);
+        legendX += 16;
+        ctx.fillStyle = COLORS.label;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.label, legendX, legendY);
+        legendX += ctx.measureText(item.label).width + 20;
+      }
+    }
+  }
+
+  // ── Generate data series (messages 1..100)
+  const msgPoints = [];
+  for (let n = 1; n <= 100; n++) msgPoints.push(n);
+
+  // Context window at message N = tools + N * avgMsgTokens
+  const unscopedCtxData = msgPoints.map(n => [n, unscopedToolTokens + n * avgMsgTokens]);
+  const scopedCtxData = msgPoints.map(n => [n, scopedToolTokens + n * avgMsgTokens]);
+
+  // Find compression points
   let unscopedCompressAt = 0;
   let scopedCompressAt = 0;
+  for (const n of msgPoints) {
+    if (!unscopedCompressAt && unscopedToolTokens + n * avgMsgTokens > contextLimit) unscopedCompressAt = n;
+    if (!scopedCompressAt && scopedToolTokens + n * avgMsgTokens > contextLimit) scopedCompressAt = n;
+  }
 
-  for (const msgNum of checkpoints) {
-    const conversation = msgNum * avgMsgTokens;
-    const unscopedTotal = u.tokens + conversation;
-    const scopedTotal = data.scoped_average.tokens + conversation;
-    const unscopedPct = Math.min(100, (unscopedTotal / contextLimit) * 100);
-    const scopedPct = Math.min(100, (scopedTotal / contextLimit) * 100);
-    const unscopedFull = unscopedTotal > contextLimit;
-    const scopedFull = scopedTotal > contextLimit;
-    if (unscopedFull && !unscopedCompressAt) unscopedCompressAt = msgNum;
-    if (scopedFull && !scopedCompressAt) scopedCompressAt = msgNum;
+  // Cumulative billed = N * tools + avgMsg * N*(N+1)/2
+  const unscopedBilledData = msgPoints.map(n => [n, n * unscopedToolTokens + avgMsgTokens * n * (n + 1) / 2]);
+  const scopedBilledData = msgPoints.map(n => [n, n * scopedToolTokens + avgMsgTokens * n * (n + 1) / 2]);
+  const toolTaxOnlyData = msgPoints.map(n => [n, n * unscopedToolTokens]);
+  const convOnlyData = msgPoints.map(n => [n, avgMsgTokens * n * (n + 1) / 2]);
 
-    const row = el('div', `display:grid;grid-template-columns:80px 1fr 1fr 1fr;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;${unscopedFull ? 'background:rgba(248,81,73,0.05)' : ''}`);
-    row.appendChild(el('span', 'font-weight:600;color:var(--text)', `#${msgNum}`));
-    row.appendChild(el('span', `color:${unscopedFull ? 'var(--red)' : 'var(--text-dim)'}`,
-      `${(unscopedTotal / 1000).toFixed(0)}K / ${(contextLimit / 1000).toFixed(0)}K (${unscopedPct.toFixed(0)}%)${unscopedFull ? ' COMPRESSED' : ''}`));
-    row.appendChild(el('span', `color:${scopedFull ? 'var(--red)' : 'var(--green)'}`,
-      `${(scopedTotal / 1000).toFixed(0)}K / ${(contextLimit / 1000).toFixed(0)}K (${scopedPct.toFixed(0)}%)${scopedFull ? ' COMPRESSED' : ''}`));
-    row.appendChild(el('span', 'color:var(--accent);font-weight:500', `${((unscopedTotal - scopedTotal) / 1000).toFixed(0)}K saved`));
+  // Cumulative cost
+  const unscopedCostData = msgPoints.map(n => {
+    const billed = n * unscopedToolTokens + avgMsgTokens * n * (n + 1) / 2;
+    return [n, billed / 1_000_000 * inputPricePerM];
+  });
+  const scopedCostData = msgPoints.map(n => {
+    const billed = n * scopedToolTokens + avgMsgTokens * n * (n + 1) / 2;
+    return [n, billed / 1_000_000 * inputPricePerM];
+  });
+
+  // ── Chart 1: Context Window Size Over Session
+  const chart1 = createCanvas('Context Window Size Over Session');
+  const ctxYMax = Math.max(unscopedCtxData[99][1], contextLimit) * 1.1;
+  const unscopedMarkers = [];
+  const scopedMarkers = [];
+  if (unscopedCompressAt) unscopedMarkers.push({ x: unscopedCompressAt, y: contextLimit, label: `Compress #${unscopedCompressAt}`, align: 'right' });
+  if (scopedCompressAt) scopedMarkers.push({ x: scopedCompressAt, y: contextLimit, label: `Compress #${scopedCompressAt}`, align: 'left' });
+
+  drawLineChart(chart1.canvas, {
+    xMin: 1, xMax: 100, xLabelStep: 10,
+    yMin: 0, yMax: ctxYMax, yTicks: 5,
+    xLabel: 'Message Number',
+    yFormat: v => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(Math.round(v)),
+    hLines: [{ value: contextLimit, label: '200K Context Limit', color: COLORS.orange }],
+    series: [
+      { color: COLORS.red, data: unscopedCtxData, markers: unscopedMarkers },
+      { color: COLORS.green, data: scopedCtxData, markers: scopedMarkers }
+    ],
+    legend: [
+      { label: 'Unscoped', color: COLORS.red },
+      { label: 'Scoped', color: COLORS.green }
+    ]
+  });
+
+  // Add annotation below chart 1
+  const gap1Note = el('p', 'font-size:12px;color:var(--text-dim);margin-top:6px;margin-bottom:0');
+  gap1Note.appendChild(document.createTextNode('The gap between lines = '));
+  const gapBold = document.createElement('strong');
+  gapBold.style.color = 'var(--text)';
+  gapBold.textContent = `${((unscopedToolTokens - scopedToolTokens) / 1000).toFixed(0)}K tokens`;
+  gap1Note.appendChild(gapBold);
+  gap1Note.appendChild(document.createTextNode(' of tool schema overhead on every single message.'));
+  chart1.wrap.appendChild(gap1Note);
+  page.appendChild(chart1.wrap);
+
+  // ── Chart 2: Cumulative Input Tokens Billed
+  const chart2 = createCanvas('Cumulative Input Tokens Billed');
+  const billedYMax = unscopedBilledData[99][1] * 1.1;
+
+  drawLineChart(chart2.canvas, {
+    xMin: 1, xMax: 100, xLabelStep: 10,
+    yMin: 0, yMax: billedYMax, yTicks: 5,
+    xLabel: 'Message Number',
+    yFormat: v => `${(v / 1_000_000).toFixed(1)}M`,
+    series: [
+      { color: COLORS.red, data: unscopedBilledData },
+      { color: COLORS.green, data: scopedBilledData },
+      { color: COLORS.orange, data: toolTaxOnlyData },
+      { color: COLORS.gray, data: convOnlyData }
+    ],
+    legend: [
+      { label: 'Total Unscoped', color: COLORS.red },
+      { label: 'Total Scoped', color: COLORS.green },
+      { label: 'Tool Tax Only', color: COLORS.orange },
+      { label: 'Conversation Only', color: COLORS.gray }
+    ]
+  });
+
+  const waste2Note = el('p', 'font-size:12px;color:var(--text-dim);margin-top:6px;margin-bottom:0');
+  waste2Note.appendChild(document.createTextNode('The area between red and green = tokens wasted on unscoped tool schemas the model never used.'));
+  chart2.wrap.appendChild(waste2Note);
+  page.appendChild(chart2.wrap);
+
+  // ── Chart 3: Cumulative Cost
+  const chart3 = createCanvas('Cumulative Cost ($)');
+  const costYMax = unscopedCostData[99][1] * 1.1;
+
+  drawLineChart(chart3.canvas, {
+    xMin: 1, xMax: 100, xLabelStep: 10,
+    yMin: 0, yMax: costYMax, yTicks: 5,
+    xLabel: 'Message Number',
+    yFormat: v => `$${v.toFixed(2)}`,
+    series: [
+      { color: COLORS.red, data: unscopedCostData, markers: [
+        { x: 100, y: unscopedCostData[99][1], label: `$${unscopedCostData[99][1].toFixed(2)}`, align: 'right' }
+      ]},
+      { color: COLORS.green, data: scopedCostData, markers: [
+        { x: 100, y: scopedCostData[99][1], label: `$${scopedCostData[99][1].toFixed(2)}`, align: 'right' }
+      ]}
+    ],
+    legend: [
+      { label: 'Unscoped', color: COLORS.red },
+      { label: 'Scoped', color: COLORS.green }
+    ]
+  });
+
+  const costGap = unscopedCostData[99][1] - scopedCostData[99][1];
+  const cost3Note = el('p', 'font-size:12px;color:var(--text-dim);margin-top:6px;margin-bottom:0');
+  cost3Note.appendChild(document.createTextNode('After 100 messages: '));
+  const costBold = document.createElement('strong');
+  costBold.style.color = 'var(--green)';
+  costBold.textContent = `$${costGap.toFixed(2)} saved`;
+  cost3Note.appendChild(costBold);
+  cost3Note.appendChild(document.createTextNode(` \u2014 and the gap keeps growing with every message.`));
+  chart3.wrap.appendChild(cost3Note);
+  page.appendChild(chart3.wrap);
+
+  // ── Chart 4: Snowball Model vs Simple Model (bar chart)
+  const chart4 = createCanvas('Snowball Model vs Simple Model');
+
+  // Simple model: 100 msgs, just multiply
+  const simpleUnscopedCost = 100 * unscopedToolTokens / 1_000_000 * inputPricePerM;
+  const simpleScopedCost = 100 * scopedToolTokens / 1_000_000 * inputPricePerM;
+  // Snowball model: unscoped 120 msgs (20% penalty), scoped 105 (5% penalty)
+  const snowballUnscopedMsgs = 120;
+  const snowballScopedMsgs = 105;
+  const snowballUnscopedCost = (snowballUnscopedMsgs * unscopedToolTokens + avgMsgTokens * snowballUnscopedMsgs * (snowballUnscopedMsgs + 1) / 2) / 1_000_000 * inputPricePerM;
+  const snowballScopedCost = (snowballScopedMsgs * scopedToolTokens + avgMsgTokens * snowballScopedMsgs * (snowballScopedMsgs + 1) / 2) / 1_000_000 * inputPricePerM;
+
+  const barYMax = Math.max(simpleUnscopedCost, snowballUnscopedCost) * 1.2;
+
+  drawBarChart(chart4.canvas, {
+    yMax: barYMax, yTicks: 5,
+    yFormat: v => `$${v.toFixed(2)}`,
+    groups: [
+      {
+        label: 'Simple (100 msgs)',
+        bars: [
+          { value: simpleUnscopedCost, color: COLORS.red, label: `$${simpleUnscopedCost.toFixed(2)}` },
+          { value: simpleScopedCost, color: COLORS.green, label: `$${simpleScopedCost.toFixed(2)}` }
+        ]
+      },
+      {
+        label: `Snowball (${snowballUnscopedMsgs} vs ${snowballScopedMsgs} msgs)`,
+        bars: [
+          { value: snowballUnscopedCost, color: COLORS.red, label: `$${snowballUnscopedCost.toFixed(2)}` },
+          { value: snowballScopedCost, color: COLORS.green, label: `$${snowballScopedCost.toFixed(2)}` }
+        ]
+      }
+    ],
+    legend: [
+      { label: 'Unscoped', color: COLORS.red },
+      { label: 'Scoped', color: COLORS.green }
+    ]
+  });
+
+  const simpleSavings = simpleUnscopedCost - simpleScopedCost;
+  const snowballSavings = snowballUnscopedCost - snowballScopedCost;
+  const bar4Note = el('p', 'font-size:12px;color:var(--text-dim);margin-top:6px;margin-bottom:0');
+  bar4Note.appendChild(document.createTextNode(`Simple model savings: $${simpleSavings.toFixed(2)}. Snowball model savings: `));
+  const snowBold = document.createElement('strong');
+  snowBold.style.color = 'var(--green)';
+  snowBold.textContent = `$${snowballSavings.toFixed(2)}`;
+  bar4Note.appendChild(snowBold);
+  bar4Note.appendChild(document.createTextNode(` \u2014 ${(snowballSavings / simpleSavings).toFixed(1)}x more savings when you account for re-sending context.`));
+  chart4.wrap.appendChild(bar4Note);
+  page.appendChild(chart4.wrap);
+
+  // ── Data table: key data points
+  page.appendChild(el('div', 'font-size:13px;font-weight:600;color:var(--accent);margin:24px 0 8px', 'Key Data Points'));
+  const tableCols = ['Msg', 'Conversation', 'Tool Tax', 'Unscoped Total', 'Scoped Total', 'Waste', 'Tool % of Total'];
+  const tblHeader = el('div', 'display:grid;grid-template-columns:50px repeat(6,1fr);gap:4px;padding:8px 0;border-bottom:2px solid var(--border);font-size:10px;color:var(--text-dim);text-transform:uppercase');
+  for (const t of tableCols) tblHeader.appendChild(el('span', 'text-align:right', t));
+  page.appendChild(tblHeader);
+
+  for (const n of checkpoints) {
+    const convAccum = avgMsgTokens * n * (n + 1) / 2;
+    const toolTax = n * unscopedToolTokens;
+    const unscopedTotal = toolTax + convAccum;
+    const scopedTotal = n * scopedToolTokens + convAccum;
+    const waste = unscopedTotal - scopedTotal;
+    const toolPct = Math.round((toolTax / unscopedTotal) * 100);
+
+    const row = el('div', 'display:grid;grid-template-columns:50px repeat(6,1fr);gap:4px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px');
+    row.appendChild(el('span', 'font-weight:600;color:var(--text);text-align:right', `#${n}`));
+    row.appendChild(el('span', 'color:var(--text-dim);text-align:right', `${(convAccum / 1_000_000).toFixed(2)}M`));
+    row.appendChild(el('span', 'color:var(--orange);text-align:right', `${(toolTax / 1_000_000).toFixed(2)}M`));
+    row.appendChild(el('span', 'color:var(--red);text-align:right', `${(unscopedTotal / 1_000_000).toFixed(2)}M`));
+    row.appendChild(el('span', 'color:var(--green);text-align:right', `${(scopedTotal / 1_000_000).toFixed(2)}M`));
+    row.appendChild(el('span', 'color:var(--accent);text-align:right', `${(waste / 1_000_000).toFixed(2)}M`));
+    row.appendChild(el('span', 'color:var(--text-dim);text-align:right', `${toolPct}%`));
+    page.appendChild(row);
+  }
+
+  // Highlight totals
+  const finalUnscoped = 100 * unscopedToolTokens + avgMsgTokens * 100 * 101 / 2;
+  const finalScoped = 100 * scopedToolTokens + avgMsgTokens * 100 * 101 / 2;
+  const finalWaste = finalUnscoped - finalScoped;
+
+  page.appendChild(richPara([
+    'After 100 messages: ', {bold: `${(finalUnscoped / 1_000_000).toFixed(1)}M total input tokens billed (unscoped)`},
+    ' vs ', {bold: `${(finalScoped / 1_000_000).toFixed(1)}M (scoped)`},
+    '. That\'s ', {bold: `${(finalWaste / 1_000_000).toFixed(1)}M tokens of pure waste`},
+    ` \u2014 $${(finalWaste / 1_000_000 * inputPricePerM).toFixed(2)} burned on tool definitions the model never used.`
+  ]));
+
+  // ── Context Window Pressure table (reformatted)
+  page.appendChild(el('div', 'font-size:13px;font-weight:600;color:var(--accent);margin:24px 0 8px', 'Context Window Pressure'));
+  page.appendChild(el('p', 'font-size:12px;color:var(--text-dim);margin-bottom:8px',
+    'How fast the context window fills up. When it hits 100%, Claude compresses prior messages \u2014 you lose conversation history.'));
+
+  const ctxCols = ['Msg', 'Unscoped', 'Capacity', 'Scoped', 'Capacity', 'Extra Room'];
+  const ctxHeader = el('div', 'display:grid;grid-template-columns:50px 1fr 70px 1fr 70px 1fr;gap:4px;padding:8px 0;border-bottom:2px solid var(--border);font-size:10px;color:var(--text-dim);text-transform:uppercase');
+  for (const t of ctxCols) ctxHeader.appendChild(el('span', 'text-align:right', t));
+  page.appendChild(ctxHeader);
+
+  for (const n of checkpoints) {
+    const conversation = n * avgMsgTokens;
+    const unscopedCtx = unscopedToolTokens + conversation;
+    const scopedCtx = scopedToolTokens + conversation;
+    const unscopedPct = Math.min(100, (unscopedCtx / contextLimit) * 100);
+    const scopedPct = Math.min(100, (scopedCtx / contextLimit) * 100);
+    const unscopedFull = unscopedCtx > contextLimit;
+    const scopedFull = scopedCtx > contextLimit;
+    const extraRoom = unscopedCtx - scopedCtx;
+
+    const row = el('div', `display:grid;grid-template-columns:50px 1fr 70px 1fr 70px 1fr;gap:4px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;${unscopedFull ? 'background:rgba(248,81,73,0.05)' : ''}`);
+    row.appendChild(el('span', 'font-weight:600;color:var(--text);text-align:right', `#${n}`));
+    row.appendChild(el('span', `color:${unscopedFull ? 'var(--red)' : 'var(--text-dim)'};text-align:right`,
+      `${(unscopedCtx / 1000).toFixed(0)}K${unscopedFull ? ' \u26A0' : ''}`));
+    row.appendChild(el('span', `color:${unscopedFull ? 'var(--red)' : 'var(--text-dim)'};text-align:right`, `${unscopedPct.toFixed(0)}%`));
+    row.appendChild(el('span', `color:${scopedFull ? 'var(--red)' : 'var(--green)'};text-align:right`,
+      `${(scopedCtx / 1000).toFixed(0)}K${scopedFull ? ' \u26A0' : ''}`));
+    row.appendChild(el('span', `color:${scopedFull ? 'var(--red)' : 'var(--green)'};text-align:right`, `${scopedPct.toFixed(0)}%`));
+    row.appendChild(el('span', 'color:var(--accent);text-align:right', `+${(extraRoom / 1000).toFixed(0)}K`));
     page.appendChild(row);
   }
 
   if (unscopedCompressAt) {
     page.appendChild(richPara([
-      {bold: `Context compression starts at message #${unscopedCompressAt} (unscoped)`},
-      ` vs ${scopedCompressAt ? `#${scopedCompressAt}` : 'never'} (scoped). After compression, the agent loses earlier conversation — it forgets what you discussed, repeats questions, and makes decisions without full history.`
+      {bold: `Context compression hits at message #${unscopedCompressAt} (unscoped)`},
+      ` vs ${scopedCompressAt ? `#${scopedCompressAt}` : 'never'} (scoped). After compression, the agent loses prior conversation \u2014 forgets what you discussed, repeats questions, makes decisions without full context. With scoping, you get `,
+      {bold: `${((unscopedToolTokens - scopedToolTokens) / 1000).toFixed(0)}K more tokens`},
+      ` of room for actual code and conversation on every message.`
     ]));
   }
 
