@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "eidos-mcp-registry"
+version = "0.1.0"
+description = "Drag-and-drop MCP server scoping across workspace groups. Like Railway for MCP config."
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "fastapi>=0.109",
+    "uvicorn[standard]>=0.27",
+    "click>=8.1",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcp_registry"]
+
+[project.scripts]
+mcp-registry = "mcp_registry.cli:main"
