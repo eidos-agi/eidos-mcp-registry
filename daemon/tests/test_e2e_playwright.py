@@ -148,9 +148,9 @@ class TestPageLoad:
         h1 = page.locator("h1#view-title")
         assert "EIDOS" in h1.text_content()
 
-    def test_nav_rail_has_six_tabs(self, page):
+    def test_nav_rail_has_seven_tabs(self, page):
         tabs = page.locator(".nav-rail-btn")
-        assert tabs.count() == 6
+        assert tabs.count() == 7
 
     def test_servers_tab_active_by_default(self, page):
         servers_btn = page.locator("#nav-servers")
@@ -313,6 +313,44 @@ class TestRebuttalPage:
         page.click("#nav-rebuttal")
         page.wait_for_timeout(500)
         assert page.locator(".metric-card").count() >= 3
+
+
+# ── Tests: CLI vs MCP Page ───────────────────────────────────────
+
+
+class TestCliVsMcpPage:
+
+    def test_click_cli_vs_mcp_tab(self, page):
+        page.click("#nav-cli-vs-mcp")
+        page.wait_for_timeout(300)
+        assert page.locator("#view-cli-vs-mcp").is_visible()
+
+    def test_has_comparison_grid(self, page):
+        page.click("#nav-cli-vs-mcp")
+        page.wait_for_timeout(500)
+        assert page.locator(".compare-grid").count() >= 1
+
+    def test_has_scenario_cards(self, page):
+        page.click("#nav-cli-vs-mcp")
+        page.wait_for_timeout(500)
+        assert page.locator(".scenario").count() >= 6
+
+    def test_has_decision_matrix_table(self, page):
+        page.click("#nav-cli-vs-mcp")
+        page.wait_for_timeout(500)
+        assert page.locator("table").count() >= 1
+
+    def test_has_graduation_path(self, page):
+        page.click("#nav-cli-vs-mcp")
+        page.wait_for_timeout(500)
+        text = page.locator("#view-cli-vs-mcp").text_content()
+        assert "Graduation" in text or "Graduate" in text
+
+    def test_mentions_both_technologies(self, page):
+        page.click("#nav-cli-vs-mcp")
+        page.wait_for_timeout(500)
+        text = page.locator("#view-cli-vs-mcp").text_content()
+        assert "CLI" in text and "MCP" in text
 
 
 # ── Tests: Servers View ──────────────────────────────────────────

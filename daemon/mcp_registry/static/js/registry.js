@@ -11,7 +11,7 @@ import { initNav } from './nav.js';
 import './editor.js';    // side-effects: registers event listeners
 import './toast.js';     // side-effects: none yet (placeholder)
 import { initActivity } from './activity.js';
-import { renderWhyMcpView, renderWhyEidosView, renderRebuttalView } from './why-pages.js';
+import { renderWhyMcpView, renderWhyEidosView, renderRebuttalView, renderCliVsMcpView } from './why-pages.js';
 
 // ── State ────────────────────────────────────────────────────────
 
@@ -111,7 +111,7 @@ export function switchTab(tab) {
   state.activeTab = tab;
 
   // Show/hide the 5 view divs
-  const views = ['servers', 'groups', 'store', 'why-mcp', 'why-eidos', 'rebuttal'];
+  const views = ['servers', 'groups', 'store', 'why-mcp', 'why-eidos', 'rebuttal', 'cli-vs-mcp'];
   for (const v of views) {
     const el = document.getElementById(`view-${v}`);
     if (el) el.style.display = v === tab ? '' : 'none';
@@ -185,6 +185,7 @@ export function renderAll() {
   else if (state.activeTab === 'why-mcp') renderWhyMcpView();
   else if (state.activeTab === 'why-eidos') renderWhyEidosView();
   else if (state.activeTab === 'rebuttal') renderRebuttalView();
+  else if (state.activeTab === 'cli-vs-mcp') renderCliVsMcpView();
 }
 
 // ── Init ─────────────────────────────────────────────────────────

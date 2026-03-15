@@ -586,3 +586,168 @@ export function renderRebuttalView() {
 
   container.appendChild(page);
 }
+
+// ══════════════════════════════════════════════════════════════════
+// CLI vs MCP — Honest Comparison
+// ══════════════════════════════════════════════════════════════════
+
+export function renderCliVsMcpView() {
+  const container = document.getElementById('view-cli-vs-mcp');
+  if (!container) return;
+  container.textContent = '';
+
+  const page = el('div', 'content-page');
+
+  // Hero
+  const hero = el('div', 'content-hero');
+  const h1 = document.createElement('h1');
+  h1.innerHTML = 'CLI vs MCP: <span>When to Use Which</span>';
+  hero.appendChild(h1);
+  hero.appendChild(para('CLI tools and MCP servers solve different problems. Neither is universally better. Here\'s an honest guide to choosing the right tool for the job.'));
+  page.appendChild(hero);
+
+  // ── The Core Difference
+  page.appendChild(el('h2', null, 'The Core Difference'));
+  page.appendChild(para('<strong>CLI is for building. MCP is for operating.</strong> A CLI tool is a hammer \u2014 pick it up, use it, put it down. An MCP server is a power tool bolted to your workbench \u2014 always ready, more capable, but heavier to set up.'));
+
+  page.appendChild(compareGrid(
+    'CLI (subprocess)',
+    [
+      'Build in 20 minutes, test, throw away, rebuild',
+      'Zero setup \u2014 just a script in PATH',
+      'Composable \u2014 pipe into grep, awk, jq',
+      'Entire Unix ecosystem available',
+      'No runtime dependency \u2014 runs and exits',
+      'Debug with echo statements',
+    ],
+    'MCP (protocol server)',
+    [
+      'Schema, transport, connection \u2014 real setup cost',
+      'Must register, configure, manage lifecycle',
+      'Structured but not pipeable',
+      'Ecosystem is young and growing',
+      'Persistent process \u2014 resources while idle',
+      'Debug with logs, health checks, typed errors',
+    ]
+  ));
+
+  // ── When CLI Wins
+  page.appendChild(el('h2', null, 'When CLI Is the Right Choice'));
+
+  page.appendChild(scenarioCard('\u26A1', 'Rapid Prototyping',
+    'You have an idea: "What if Claude could query my local Postgres?" With CLI, you write a 30-line bash script, test it, iterate 5 times in an hour. With MCP, you\'re still writing the tool schema. <strong>Prototyping speed is CLI\'s superpower.</strong> Don\'t fight it.'));
+
+  page.appendChild(scenarioCard('\uD83D\uDD27', 'One-Shot Transformations',
+    '"Parse this CSV into JSON." "Count lines matching a pattern." "Extract emails from this log." These are stateless, single-use operations. Spinning up an MCP server for them is like renting a crane to hang a picture frame.'));
+
+  page.appendChild(scenarioCard('\uD83D\uDD17', 'Shell Pipelines',
+    '<code>cat data.json | jq \'.users[]\' | grep admin | wc -l</code> \u2014 Unix pipelines are the original composability pattern. MCP has no equivalent. When your problem is "transform text through a chain of filters," CLI wins outright.'));
+
+  page.appendChild(scenarioCard('\uD83D\uDDA5\uFE0F', 'Local-Only, Single-User',
+    'You\'re the only user. The tool never leaves your machine. There\'s no compliance requirement, no multi-tenant concern, no credential sharing. MCP\'s security model is solving a problem you don\'t have. Keep it simple.'));
+
+  page.appendChild(scenarioCard('\uD83D\uDCE6', 'Existing Tool Wrappers',
+    'You already have a CLI tool that works perfectly. Wrapping it in MCP just to say "we use MCP" is cargo-culting. If the tool is stable, well-tested, and does its job \u2014 <strong>don\'t fix what isn\'t broken.</strong>'));
+
+  page.appendChild(scenarioCard('\uD83E\uDDEA', 'Throwaway Experiments',
+    '"I wonder if this API returns what I think it does." Write a curl wrapper, test the hypothesis, delete the script. The experiment has a lifespan of minutes. MCP\'s persistence is overhead you\'ll never use.'));
+
+  // ── When MCP Wins
+  page.appendChild(el('h2', null, 'When MCP Is the Right Choice'));
+
+  page.appendChild(scenarioCard('\uD83D\uDD10', 'Credentials Must Be Isolated',
+    'Your tool needs an API key, database password, or OAuth token. With CLI, that secret sits in an environment variable readable by every child process. With MCP, <strong>the credential lives inside the server process</strong> \u2014 the AI agent never sees it. For anything touching production data, this matters.'));
+
+  page.appendChild(scenarioCard('\uD83D\uDC65', 'Multiple Agents or Users',
+    'Two agents need the same tool with different permissions. Agent A reads issues; Agent B closes them. CLI has no concept of per-caller permissions. MCP can enforce <strong>scoped access per connection</strong>. The moment your tool has more than one consumer, MCP earns its weight.'));
+
+  page.appendChild(scenarioCard('\uD83D\uDCCB', 'Audit and Compliance',
+    '"Who called this tool, with what parameters, and what did it return?" With CLI: \u{1F937}. The subprocess ran and exited. With MCP: every invocation is a structured, loggable event. If you\'re in a regulated industry or working with client data, this isn\'t optional.'));
+
+  page.appendChild(scenarioCard('\uD83D\uDD04', 'Stateful Operations',
+    'Holding a database transaction open across multiple tool calls. Tracking which PRs you\'ve already reviewed in a session. Maintaining a search cursor for pagination. CLI tools start cold every time. MCP servers <strong>maintain state across calls</strong>.'));
+
+  page.appendChild(scenarioCard('\uD83D\uDCE1', 'Real-Time Notifications',
+    '"Deploy completed." "Test suite failed." "New PR opened." MCP servers can push events to the AI without being polled. CLI tools can\'t notify \u2014 they can only be asked. If your workflow needs reactivity, MCP is the only option.'));
+
+  page.appendChild(scenarioCard('\uD83C\uDFD7\uFE0F', 'Production Infrastructure',
+    'You\'ve prototyped with CLI and it works. Now it needs to be reliable, secure, discoverable by other tools, and maintainable by a team. This is the graduation point. <strong>Most good MCP servers started as CLI prototypes.</strong>'));
+
+  // ── The Graduation Path
+  page.appendChild(el('h2', null, 'The Graduation Path'));
+  page.appendChild(para('The best workflow isn\'t CLI <em>or</em> MCP. It\'s CLI <em>then</em> MCP. Here\'s the lifecycle:'));
+
+  const lifecycle = el('div', 'feature-grid');
+  lifecycle.appendChild(featureItem('1\uFE0F\u20E3', 'Explore with CLI',
+    'Bash script, Python one-liner, curl wrapper. Validate the idea in minutes. Does the API return what you need? Is the data format workable? Answer these questions fast.'));
+  lifecycle.appendChild(featureItem('2\uFE0F\u20E3', 'Stabilize the Interface',
+    'The prototype works. Now define the inputs, outputs, and error cases. Write a --help flag. Add input validation. This is still CLI, but it\'s becoming a real tool.'));
+  lifecycle.appendChild(featureItem('3\uFE0F\u20E3', 'Evaluate: Does It Need MCP?',
+    'Ask: Will multiple agents use this? Does it handle secrets? Does it need state across calls? Does anyone need an audit trail? If yes to any \u2014 graduate. If no \u2014 keep it as CLI.'));
+  lifecycle.appendChild(featureItem('4\uFE0F\u20E3', 'Graduate to MCP',
+    'Wrap the stabilized logic in an MCP server. Add typed schemas from your validated interface. The hard part (figuring out what the tool does) is already done. The MCP wrapper is mechanical.'));
+  page.appendChild(lifecycle);
+
+  page.appendChild(pullQuote('Don\'t start with MCP. Don\'t avoid MCP. Start with CLI to find the right interface, then graduate to MCP when you need the infrastructure properties. The prototype informs the protocol.'));
+
+  // ── Decision Matrix
+  page.appendChild(el('h2', null, 'Quick Decision Matrix'));
+
+  const matrix = document.createElement('table');
+  matrix.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;margin:16px 0';
+
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['Scenario', 'CLI', 'MCP', 'Winner'].forEach(text => {
+    const th = document.createElement('th');
+    th.style.cssText = 'text-align:left;padding:8px 12px;border-bottom:2px solid var(--border);color:var(--text-dim);font-size:11px;text-transform:uppercase';
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  matrix.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  const rows = [
+    ['Quick prototype / experiment', '\u2705 Fast', '\u274C Slow setup', 'CLI'],
+    ['Shell pipeline / text transforms', '\u2705 Native', '\u274C Not pipeable', 'CLI'],
+    ['Throwaway one-shot script', '\u2705 Write & delete', '\u274C Overkill', 'CLI'],
+    ['Wrapping existing tool that works', '\u2705 Already done', '\u274C Unnecessary', 'CLI'],
+    ['Handles API keys or passwords', '\u274C Env vars exposed', '\u2705 Isolated', 'MCP'],
+    ['Multiple agents share the tool', '\u274C No access control', '\u2705 Per-caller perms', 'MCP'],
+    ['Audit trail required', '\u274C Invisible', '\u2705 Structured logs', 'MCP'],
+    ['Stateful across calls', '\u274C Cold start each time', '\u2705 Persistent', 'MCP'],
+    ['Push notifications needed', '\u274C Poll only', '\u2705 Bidirectional', 'MCP'],
+    ['Team/enterprise deployment', '\u274C Manual per-machine', '\u2705 Registry managed', 'MCP'],
+    ['10+ tools for AI to discover', '\u274C Must know command', '\u2705 Self-describing', 'MCP'],
+    ['Per-group config overrides', '\u274C Manual per-repo', '\u2705 Registry handles', 'MCP'],
+  ];
+
+  for (const [scenario, cli, mcp, winner] of rows) {
+    const tr = document.createElement('tr');
+    tr.style.cssText = 'border-bottom:1px solid var(--border)';
+    [scenario, cli, mcp, winner].forEach((text, i) => {
+      const td = document.createElement('td');
+      td.style.cssText = 'padding:8px 12px;color:var(--text-dim)';
+      if (i === 0) td.style.color = 'var(--text)';
+      if (i === 3) {
+        td.style.fontWeight = '600';
+        td.style.color = text === 'CLI' ? 'var(--orange)' : 'var(--accent)';
+      }
+      td.textContent = text;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+  matrix.appendChild(tbody);
+  page.appendChild(matrix);
+
+  // ── The Bottom Line
+  page.appendChild(el('h2', null, 'The Bottom Line'));
+  page.appendChild(para('CLI and MCP are complementary technologies at different points on the formality spectrum. Using only CLI is like writing all your code in bash scripts \u2014 fast to start, painful to maintain. Using only MCP is like writing a Java enterprise app to add two numbers \u2014 correct but absurd.'));
+  page.appendChild(para('<strong>The right answer is almost always:</strong> prototype with CLI, ship with MCP, manage with a registry. Each layer adds value at the right stage of the tool\'s lifecycle.'));
+
+  page.appendChild(pullQuote('The Unix philosophy gave us small, composable tools. MCP gives those tools identity, security, and discoverability. The registry gives them management. These aren\'t competing ideas \u2014 they\'re layers.'));
+
+  container.appendChild(page);
+}

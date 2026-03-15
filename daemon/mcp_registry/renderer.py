@@ -1444,6 +1444,10 @@ footer {
     <span class="nav-rail-icon">&#x2694;</span>
     <span class="nav-rail-label">Rebuttal</span>
   </button>
+  <button class="nav-rail-btn" data-tab="cli-vs-mcp" id="nav-cli-vs-mcp">
+    <span class="nav-rail-icon">&#x2696;</span>
+    <span class="nav-rail-label">CLI vs MCP</span>
+  </button>
 </nav>
 
 <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
@@ -1491,6 +1495,8 @@ footer {
     <div id="view-why-eidos" style="display:none"></div>
     <!-- Rebuttal view -->
     <div id="view-rebuttal" style="display:none"></div>
+    <!-- CLI vs MCP view -->
+    <div id="view-cli-vs-mcp" style="display:none"></div>
   </section>
 
   <!-- Hidden tree element for backward compat (nav.js renderTree) -->
