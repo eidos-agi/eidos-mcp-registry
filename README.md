@@ -6,6 +6,8 @@ A local daemon that manages which MCP servers are available in which projects. I
 
 Built for [Claude Code](https://claude.ai/code) users.
 
+![Servers — drag-and-drop scoping with token bars and group zones](screenshots/servers.png)
+
 ## The Problem
 
 Claude Code loads MCP servers from `~/.claude.json` (user scope) and `.mcp.json` (project scope). User-scope servers leak into every project. With 20+ servers, every conversation burns thousands of tokens on tool schemas the model never uses — degrading response quality, increasing cost, and causing wrong-tool collisions.
@@ -51,6 +53,18 @@ mcp-registry status          # Show registry state
 mcp-registry open            # Open UI in browser
 ```
 
+## Screenshots
+
+| Servers | Token Budget |
+|---------|-------------|
+| ![Servers](screenshots/servers.png) | ![Tokens](screenshots/tokens.png) |
+| Drag servers into groups. Token bars show per-server cost. Scope Audit flags leaking servers. | See exactly how much scoping saves — per-server costs, group budgets, monthly savings. |
+
+| Groups | Documentation |
+|--------|--------------|
+| ![Groups](screenshots/groups.png) | ![Docs](screenshots/docs.png) |
+| Manage groups, deploy to repos, rollback, and check gitignore status. | 11-section structured guide with clickable TOC. |
+
 ## Features
 
 - **Group-based scoping** — organize servers by client, team, or project
@@ -73,7 +87,7 @@ daemon/
     ├── store.py           # Thread-safe state + JSON persistence
     ├── scanner.py         # Discovery: CLI + config + repo dirs
     ├── deployer.py        # .mcp.json merge, mask, deploy, rollback
-    ├── detector.py        # 4 detection scan engines
+    ├── detector.py        # 5 detection scan engines
     ├── health.py          # Background health polling
     ├── notifications.py   # Inbox with priorities + deduplication
     ├── catalog.py         # Server metadata + completeness scoring
