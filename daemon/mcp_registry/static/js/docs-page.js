@@ -431,6 +431,24 @@ export function renderDocsView() {
     'var(--orange)'
   ));
 
+  page.appendChild(subTitle('Scoping, Caching, and What Actually Matters'));
+
+  page.appendChild(infoBox(
+    'Important: Caching Does Not Solve the Scoping Problem',
+    'Claude\'s prompt caching makes tool schemas cheaper to process (90% discount after the first turn). But cached tokens still occupy the same space in the context window. A cached 50K-token tool payload is cheaper to read \u2014 but it still takes 50K tokens of space away from your code, conversation history, and reasoning. Scoping reduces the number of tokens in the window, which prevents three problems caching cannot fix:',
+    'var(--orange)'
+  ));
+
+  page.appendChild(bulletList([
+    [{bold: 'Context compression'}, ' \u2014 in long sessions (100+ messages), Claude starts discarding earlier conversation to fit within the context limit. Every token of unused tool schemas accelerates this. Fewer schemas = more room for your actual work.'],
+    [{bold: 'Tool confusion'}, ' \u2014 when multiple servers expose similar tools (search, list, create), Claude picks the wrong one more often. Caching doesn\'t help with selection accuracy \u2014 the schemas are still there competing for attention.'],
+    [{bold: 'Conversation coherence'}, ' \u2014 research shows LLM quality degrades as input length grows, even on simple tasks. Tool schemas add to total input length on every turn regardless of caching. Scoping keeps the input shorter, preserving model quality across long sessions.'],
+  ]));
+
+  page.appendChild(richPara([
+    {bold: 'Think of it this way:'}, ' caching is a discount on processing. Scoping is a reduction in what needs to be processed. A cached book is cheaper to check out from the library, but it still takes up the same space on your desk.'
+  ]));
+
   page.appendChild(subTitle('The Registry\'s Solution: Assign \u2192 Deploy \u2192 Promote'));
 
   page.appendChild(numberedList([
