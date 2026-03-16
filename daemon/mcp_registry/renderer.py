@@ -1595,6 +1595,14 @@ footer {
     <span class="nav-rail-icon">&#x23F3;</span>
     <span class="nav-rail-label">Lazy Load</span>
   </button>
+  <button class="nav-rail-btn" data-tab="docs" id="nav-docs">
+    <span class="nav-rail-icon">&#x1F4D6;</span>
+    <span class="nav-rail-label">Docs</span>
+  </button>
+  <button class="nav-rail-btn" data-tab="adrs" id="nav-adrs">
+    <span class="nav-rail-icon">&#x2696;</span>
+    <span class="nav-rail-label">ADRs</span>
+  </button>
 </nav>
 
 <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
@@ -1650,6 +1658,10 @@ footer {
     <div id="view-token-savings" style="display:none"></div>
     <!-- Lazy Loading view -->
     <div id="view-lazy-loading" style="display:none"></div>
+    <!-- Docs view -->
+    <div id="view-docs" style="display:none"></div>
+    <!-- ADRs view -->
+    <div id="view-adrs" style="display:none"></div>
   </section>
 
   <!-- Hidden tree element for backward compat (nav.js renderTree) -->
