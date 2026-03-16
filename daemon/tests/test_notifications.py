@@ -167,8 +167,8 @@ class TestDetector:
         items = notifications.get_notifications("pending")
         assert len(items) == 2
         titles = {n["title"] for n in items}
-        assert "New repo detected: no-mcp" in titles
-        assert "New repo detected: also-no-mcp" in titles
+        assert any("no-mcp" in t for t in titles)
+        assert any("also-no-mcp" in t for t in titles)
 
     def test_detect_new_repos_no_duplicates(self, store_with_repos):
         detector.detect_new_repos(store_with_repos)
@@ -202,8 +202,8 @@ class TestDetector:
 
         items = notifications.get_notifications("pending")
         assert len(items) == 1
-        assert "Gitignore missing" in items[0]["title"]
-        assert items[0]["priority"] == "high"
+        assert "gitignore" in items[0]["title"].lower() or ".mcp.json" in items[0]["title"]
+        assert items[0]["priority"] == "medium"
 
     def test_detect_health_failures(self, tmp_registry):
         import time

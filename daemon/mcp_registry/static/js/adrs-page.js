@@ -409,6 +409,52 @@ const ADRS = [
       'These pages position the tool as thoughtful infrastructure, not just a config manager.',
     ],
   },
+  {
+    id: 'ADR-2026-10',
+    title: 'VS Code Simple Browser Compatibility: No Bare Catch, File Rename for Cache Busting',
+    status: 'Accepted',
+    date: '2026-03-15',
+    owner: 'Daniel Shanklin',
+    related: 'JS module architecture',
+    context: [
+      'The registry must work in both Chrome and VS Code\'s Simple Browser (embedded webview).',
+      'After adding new exports to activity.js, VS Code showed "does not provide export named renderActivityLogView" even though the file was correct on disk.',
+      'VS Code Simple Browser caches ES modules by URL permanently. Cache-Control: no-cache headers are ignored for module imports.',
+      'Additionally, bare catch {} syntax (ES2019) was found in 15 places across 6 files, which may not work in older JS engines.',
+    ],
+    decision: [
+      'Never use bare catch {} \u2014 always catch(e) {} for compatibility with older JS engines.',
+      'When adding new exports to existing JS modules, rename the file to bust VS Code\'s module cache.',
+      'Add Cache-Control: no-cache headers for all .js files as defense-in-depth (helps Chrome, not VS Code).',
+      'Test in VS Code Simple Browser after every JS module change, not just Chrome.',
+    ],
+    options: [
+      {
+        label: 'A. Bundle all JS into one file (rejected)',
+        pros: 'No module caching issues, one file to serve',
+        cons: 'Lose module isolation, harder to develop, build step required',
+        selected: false,
+      },
+      {
+        label: 'B. File rename + no-cache headers (selected)',
+        pros: 'Works in both environments, no build step, simple',
+        cons: 'Must remember to rename when adding exports, git history shows renames',
+        selected: true,
+      },
+      {
+        label: 'C. Import maps / dynamic imports only (rejected)',
+        pros: 'More control over module resolution',
+        cons: 'Import maps may not work in VS Code webview, adds complexity',
+        selected: false,
+      },
+    ],
+    consequences: [
+      'activity.js was renamed to activity-log.js to fix the immediate issue.',
+      'All 15 instances of bare catch {} were replaced with catch(e) {}.',
+      'Future JS changes that add exports should be tested in VS Code Simple Browser before committing.',
+      'This is a known limitation of VS Code\'s embedded browser, not a bug in the registry.',
+    ],
+  },
 ];
 
 // ── Render ───────────────────────────────────────────────────────
