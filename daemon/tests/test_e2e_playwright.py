@@ -148,9 +148,9 @@ class TestPageLoad:
         h1 = page.locator("h1#view-title")
         assert "EIDOS" in h1.text_content()
 
-    def test_nav_rail_has_seven_tabs(self, page):
+    def test_nav_rail_has_thirteen_tabs(self, page):
         tabs = page.locator(".nav-rail-btn")
-        assert tabs.count() == 7
+        assert tabs.count() == 13
 
     def test_servers_tab_active_by_default(self, page):
         servers_btn = page.locator("#nav-servers")

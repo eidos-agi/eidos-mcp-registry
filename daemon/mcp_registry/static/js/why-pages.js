@@ -276,7 +276,7 @@ export function renderWhyEidosView() {
   // ── Section: About Eidos AGI
   page.appendChild(el('h2', null, 'About Eidos AGI'));
 
-  page.appendChild(para('Eidos AGI is a one-person research lab founded by Daniel Shanklin in March 2025. The thesis is simple: <strong>the correct relationship between human and AI is a cockpit, not a chat box.</strong>'));
+  page.appendChild(para('Eidos AGI is a research lab founded in March 2025. The thesis is simple: <strong>the correct relationship between human and AI is a cockpit, not a chat box.</strong>'));
 
   page.appendChild(para('Every AI product today ships one of two broken models. The <strong>vending machine</strong> — type a prompt, get an output, no relationship, no continuity. Or the <strong>drone</strong> — fire a task, hope for the best, find out what happened after. Neither is right. The cockpit is the third option: human and AI as a unit, where intent flows in and capability flows out.'));
 

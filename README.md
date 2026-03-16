@@ -111,7 +111,7 @@ pytest
 
 ## About Eidos AGI
 
-Eidos AGI is a research lab founded by Daniel Shanklin. We build open-source tools that put humans in the cockpit of AI systems — not behind them, not removed from them.
+Eidos AGI is a research lab. We build open-source tools that put humans in the cockpit of AI systems — not behind them, not removed from them.
 
 The cockpit thesis: the correct relationship between human and AI is neither a chat box (vending machine) nor full autonomy (drone). It's a cockpit — human and AI as a unit, where intent flows in and capability flows out.
 
