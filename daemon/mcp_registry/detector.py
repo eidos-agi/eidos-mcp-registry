@@ -53,7 +53,7 @@ def detect_new_repos(store) -> int:
 
 
 def detect_drift(store) -> int:
-    """Run deploy preview. If repos show changes, create drift notifications."""
+    """Run deploy preview. If repos show changes, create one clear notification per group."""
     from mcp_registry.deployer import preview as deploy_preview
 
     try:
@@ -65,31 +65,49 @@ def detect_drift(store) -> int:
     if not changes:
         return 0
 
-    # Group changes by group key
-    by_group: dict[str, list[str]] = {}
+    # Group changes by group key, collect what's actually different
+    by_group: dict[str, dict] = {}
     for path, change in changes.items():
         gk = change.get("group", "unknown")
-        by_group.setdefault(gk, []).append(path)
+        if gk not in by_group:
+            by_group[gk] = {"repos": 0, "added": set(), "removed": set(), "updated": set()}
+        bg = by_group[gk]
+        bg["repos"] += 1
+        for s in change.get("servers_added", []):
+            bg["added"].add(s)
+        for s in change.get("servers_removed", []):
+            bg["removed"].add(s)
+        for s in change.get("servers_updated", []):
+            bg["updated"].add(s)
 
     count = 0
     snapshot = store.snapshot()
     groups = snapshot["groups"]
 
-    for gk, paths in by_group.items():
+    for gk, info in by_group.items():
         label = groups.get(gk, {}).get("label", gk)
-        repo_names = ", ".join(Path(p).parent.name for p in paths[:3])
-        more = f" and {len(paths) - 3} more" if len(paths) > 3 else ""
-        context = {"group": gk, "files_changed": len(paths)}
+
+        # Build a human-readable description of what changed
+        parts = []
+        if info["added"]:
+            parts.append(f"Add: {', '.join(sorted(info['added']))}")
+        if info["removed"]:
+            parts.append(f"Remove: {', '.join(sorted(info['removed']))}")
+        if info["updated"]:
+            parts.append(f"Update: {', '.join(sorted(info['updated']))}")
+
+        what_changed = ". ".join(parts) if parts else "Configuration differs from registry"
+
+        context = {"group": gk, "files_changed": info["repos"]}
         n = notifications.create_notification(
             "drift",
-            f"{label}: .mcp.json files don't match the registry",
-            f"{len(paths)} repo(s) in {label} have .mcp.json files that are different "
-            f"from what the registry expects. This can happen when someone edits a "
-            f".mcp.json by hand, or when you change server assignments without "
-            f"redeploying. Affected repos: {repo_names}{more}. "
-            f"Click Deploy to overwrite them with the correct config.",
+            f"{label}: {info['repos']} repos need updating",
+            f"The .mcp.json files in {label} don't match what the registry says "
+            f"they should have. Changes needed across {info['repos']} repos: "
+            f"{what_changed}. "
+            f"Click Deploy to update all repos in this group.",
             actions=[
-                {"label": "Deploy to fix", "endpoint": "/deploy",
+                {"label": "Deploy to update", "endpoint": "/deploy",
                  "method": "POST", "body": {"groups": [gk]}},
                 {"label": "Leave as-is", "action": "dismiss"},
             ],
@@ -132,51 +150,6 @@ def detect_health_failures(store) -> int:
             )
             if n:
                 count += 1
-
-    return count
-
-
-def detect_stale_deploys(store) -> int:
-    """If any group has pending changes, notify."""
-    from mcp_registry.deployer import preview as deploy_preview
-
-    try:
-        changes = deploy_preview(store)
-    except Exception:
-        return 0
-
-    if not changes:
-        return 0
-
-    # Group by group key
-    by_group: dict[str, int] = {}
-    for _path, change in changes.items():
-        gk = change.get("group", "unknown")
-        by_group[gk] = by_group.get(gk, 0) + 1
-
-    snapshot = store.snapshot()
-    groups = snapshot["groups"]
-    count = 0
-
-    for gk, num_changes in by_group.items():
-        label = groups.get(gk, {}).get("label", gk)
-        context = {"group": gk, "type": "stale_deploy"}
-        n = notifications.create_notification(
-            "stale_deploy",
-            f"{label}: repos are out of sync",
-            f"You've changed which servers belong to {label}, but the .mcp.json "
-            f"files in {num_changes} repo(s) still have the old configuration. "
-            f"Until you deploy, Claude Code will load the wrong servers when "
-            f"working in these repos. Click Deploy to update them.",
-            actions=[
-                {"label": "Deploy now", "endpoint": "/deploy",
-                 "method": "POST", "body": {"groups": [gk]}},
-                {"label": "Later", "action": "dismiss"},
-            ],
-            context=context,
-        )
-        if n:
-            count += 1
 
     return count
 
@@ -245,8 +218,6 @@ def run_all_detections(store) -> int:
         ("drift", detect_drift),
         ("health_failures", detect_health_failures),
         ("gitignore_missing", detect_gitignore_missing),
-        # stale_deploy shares fingerprint space with drift; run last
-        ("stale_deploys", detect_stale_deploys),
     ]
     for name, fn in detectors:
         try:
