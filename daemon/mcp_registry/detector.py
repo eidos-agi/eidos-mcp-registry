@@ -6,6 +6,7 @@ from pathlib import Path
 
 from mcp_registry.scanner import list_repos_in_group
 from mcp_registry import notifications
+from mcp_registry import activity
 
 logger = logging.getLogger("mcp_registry.detector")
 
@@ -227,4 +228,8 @@ def run_all_detections(store) -> int:
                 logger.info("Detector %s created %d notification(s)", name, n)
         except Exception:
             logger.exception("Detector %s failed", name)
+    activity.log_event("detection_run", {
+        "notifications_created": total,
+        "detectors_run": len(detectors),
+    })
     return total

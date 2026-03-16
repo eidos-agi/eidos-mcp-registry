@@ -804,6 +804,12 @@ async def approve_notification(nid: str):
     result = notifications.approve_notification(nid)
     if not result:
         return JSONResponse({"error": "Not found"}, status_code=404)
+    n = result.get("notification", {})
+    activity.log_event("notification_approved", {
+        "title": n.get("title", ""),
+        "type": n.get("type", ""),
+        "priority": n.get("priority", ""),
+    })
     return result
 
 
@@ -813,6 +819,11 @@ async def record_audit(nid: str, body: dict):
     ok = notifications.record_audit(nid, body)
     if not ok:
         return JSONResponse({"error": "Not found"}, status_code=404)
+    activity.log_event("notification_audit", {
+        "action": body.get("action_taken", ""),
+        "endpoint": body.get("endpoint", ""),
+        "has_error": "error" in body,
+    })
     return {"ok": True}
 
 
@@ -821,6 +832,11 @@ async def dismiss_notification(nid: str):
     result = notifications.dismiss_notification(nid)
     if not result:
         return JSONResponse({"error": "Not found"}, status_code=404)
+    n = result or {}
+    activity.log_event("notification_dismissed", {
+        "title": n.get("title", ""),
+        "type": n.get("type", ""),
+    })
     return result
 
 

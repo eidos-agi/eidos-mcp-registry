@@ -1567,6 +1567,10 @@ footer {
     <span class="nav-rail-label">Inbox</span>
     <span class="notification-badge" id="notification-badge" style="display:none"></span>
   </button>
+  <button class="nav-rail-btn" data-tab="activity-log" id="nav-activity-log">
+    <span class="nav-rail-icon">&#x1F4DC;</span>
+    <span class="nav-rail-label">Log</span>
+  </button>
   <button class="nav-rail-btn" data-tab="store" id="nav-store">
     <span class="nav-rail-icon">&#x25C9;</span>
     <span class="nav-rail-label">Store</span>
@@ -1644,6 +1648,8 @@ footer {
     <div id="view-groups" style="display:none"></div>
     <!-- Notifications view -->
     <div id="view-notifications" style="display:none"></div>
+    <!-- Activity Log view -->
+    <div id="view-activity-log" style="display:none"></div>
     <!-- Store view -->
     <div id="view-store" style="display:none"></div>
     <!-- Why MCP view -->

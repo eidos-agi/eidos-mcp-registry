@@ -10,7 +10,7 @@ import { renderGroupsView, handleDeployProgress } from './groups-view.js';
 import { initNav } from './nav.js';
 import './editor.js';    // side-effects: registers event listeners
 import './toast.js';     // side-effects: none yet (placeholder)
-import { initActivity } from './activity.js';
+import { initActivity, renderActivityLogView } from './activity.js';
 import { renderWhyMcpView, renderWhyEidosView, renderRebuttalView, renderCliVsMcpView } from './why-pages.js';
 import { renderTokenSavingsView } from './token-savings.js';
 import { renderLazyLoadingView } from './lazy-loading.js';
@@ -117,7 +117,7 @@ export function switchTab(tab) {
   state.activeTab = tab;
 
   // Show/hide the 5 view divs
-  const views = ['servers', 'groups', 'notifications', 'store', 'why-mcp', 'why-eidos', 'rebuttal', 'cli-vs-mcp', 'token-savings', 'lazy-loading', 'docs', 'adrs'];
+  const views = ['servers', 'groups', 'notifications', 'activity-log', 'store', 'why-mcp', 'why-eidos', 'rebuttal', 'cli-vs-mcp', 'token-savings', 'lazy-loading', 'docs', 'adrs'];
   for (const v of views) {
     const el = document.getElementById(`view-${v}`);
     if (el) el.style.display = v === tab ? '' : 'none';
@@ -189,6 +189,7 @@ export function renderAll() {
   if (state.activeTab === 'servers') renderServersView();
   else if (state.activeTab === 'groups') renderGroupsView();
   else if (state.activeTab === 'notifications') renderNotificationsView();
+  else if (state.activeTab === 'activity-log') renderActivityLogView();
   else if (state.activeTab === 'store') renderStoreView();
   else if (state.activeTab === 'why-mcp') renderWhyMcpView();
   else if (state.activeTab === 'why-eidos') renderWhyEidosView();
