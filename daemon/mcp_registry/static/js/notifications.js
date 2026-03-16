@@ -148,7 +148,7 @@ function createCard(n) {
                   error: err.message || 'Action failed',
                   completed_at: new Date().toISOString(),
                 });
-              } catch {}
+              } catch(e) {}
             }
           })();
         });
@@ -331,7 +331,7 @@ export async function updateNotificationBadge() {
     } else {
       badge.style.background = 'var(--accent)';
     }
-  } catch {
+  } catch(e) {
     badge.style.display = 'none';
   }
 }

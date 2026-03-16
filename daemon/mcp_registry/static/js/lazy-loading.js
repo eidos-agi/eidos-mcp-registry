@@ -37,7 +37,7 @@ export async function renderLazyLoadingView() {
   container.textContent = '';
 
   let data;
-  try { data = await api.get('/token-budget'); } catch { data = null; }
+  try { data = await api.get('/token-budget'); } catch(e) { data = null; }
 
   const page = el('div', 'max-width:800px;padding:0 20px 40px');
 

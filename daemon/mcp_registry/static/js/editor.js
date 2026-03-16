@@ -190,7 +190,7 @@ export function collectEditorData() {
   const argsRaw = document.getElementById('edit-args')?.value || '[]';
   try {
     data.args = JSON.parse(argsRaw);
-  } catch {
+  } catch(e) {
     data.args = argsRaw.split(/\s+/).filter(Boolean);
   }
 

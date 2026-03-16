@@ -195,7 +195,7 @@ export async function renderActivityLogView() {
   let events;
   try {
     events = await api.get('/activity?limit=100');
-  } catch {
+  } catch(e) {
     page.appendChild(Object.assign(document.createElement('div'), {
       textContent: 'Failed to load activity log',
       style: 'color:var(--red);padding:20px;text-align:center',

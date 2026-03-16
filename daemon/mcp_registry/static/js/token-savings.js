@@ -66,7 +66,7 @@ export async function renderTokenSavingsView() {
   let data;
   try {
     data = await api.get('/token-budget');
-  } catch {
+  } catch(e) {
     loading.textContent = 'Failed to load token data';
     return;
   }

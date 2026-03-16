@@ -238,11 +238,11 @@ async function renderPromoteBanner(container) {
   let audit, catalog;
   try {
     audit = await api.get('/scope-audit');
-  } catch { return; }
+  } catch(e) { return; }
   try {
     const catData = await api.get('/server-catalog');
     catalog = catData.servers || {};
-  } catch { catalog = {}; }
+  } catch(e) { catalog = {}; }
 
   const { summary, servers } = audit;
 
@@ -307,7 +307,7 @@ async function renderPromoteBanner(container) {
       b.textContent = `${incomplete} undocumented`;
       badgeRow.appendChild(b);
     }
-  } catch {}
+  } catch(e) {}
 
   // Promote All button in header
   const promoteBtn = document.createElement('button');
@@ -328,7 +328,7 @@ async function renderPromoteBanner(container) {
         import('./toast.js').then(m => m.showToast(`Promoted ${count} servers to project-only`, 'success'));
         // Refresh the audit
         setTimeout(() => loadData(), 1000);
-      } catch {
+      } catch(e) {
         promoteBtn.textContent = 'Failed';
         promoteBtn.disabled = false;
       }
@@ -355,7 +355,7 @@ async function renderPromoteBanner(container) {
       _catalogCache = null;
       import('./toast.js').then(m => m.showToast('Auto-enrichment complete', 'success'));
       setTimeout(() => loadData(), 1000);
-    } catch {
+    } catch(e) {
       enrichBtn.textContent = 'Failed';
       enrichBtn.disabled = false;
     }
@@ -549,10 +549,10 @@ async function renderServerDetail(container, name) {
 
   // Load catalog + audit if not cached
   if (!_catalogCache) {
-    try { const d = await api.get('/server-catalog'); _catalogCache = d.servers || {}; } catch { _catalogCache = {}; }
+    try { const d = await api.get('/server-catalog'); _catalogCache = d.servers || {}; } catch(e) { _catalogCache = {}; }
   }
   if (!_auditCache) {
-    try { const d = await api.get('/scope-audit'); _auditCache = {}; for (const s of d.servers) _auditCache[s.server] = s; } catch { _auditCache = {}; }
+    try { const d = await api.get('/scope-audit'); _auditCache = {}; for (const s of d.servers) _auditCache[s.server] = s; } catch(e) { _auditCache = {}; }
   }
   const cat = _catalogCache[name] || {};
   const audit = _auditCache[name] || {};
@@ -737,7 +737,7 @@ async function renderServerDetail(container, name) {
           _completenessCache = null;
           _catalogCache = null;
           setTimeout(() => renderServersView(), 500);
-        } catch {
+        } catch(e) {
           enrichBtn.textContent = 'Failed';
           enrichBtn.disabled = false;
         }
@@ -746,7 +746,7 @@ async function renderServerDetail(container, name) {
 
       container.appendChild(compSection);
     }
-  } catch {}
+  } catch(e) {}
 
   // Scope detail
   if (audit.detail) {
@@ -1218,7 +1218,7 @@ export async function renderServersView() {
 
   // Fetch token budget for tile bars (fire-and-forget if not cached)
   if (!_tokenBudgetCache) {
-    try { _tokenBudgetCache = await api.get('/token-budget'); } catch {}
+    try { _tokenBudgetCache = await api.get('/token-budget'); } catch(e) {}
   }
 
   // Two-column layout: drop zones (left) | servers (right)
