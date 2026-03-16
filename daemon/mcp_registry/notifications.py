@@ -170,6 +170,10 @@ def approve_notification(nid: str) -> dict | None:
     return _store.approve(nid)
 
 
+def record_audit(nid: str, audit_result: dict) -> bool:
+    return _store.record_audit(nid, audit_result)
+
+
 def dismiss_notification(nid: str) -> dict | None:
     return _store.dismiss(nid)
 

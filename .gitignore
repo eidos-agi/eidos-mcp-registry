@@ -5,3 +5,4 @@ build/
 *.pyc
 .venv/
 *.DS_Store
+.mcp.json
