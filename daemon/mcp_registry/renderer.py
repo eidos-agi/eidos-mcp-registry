@@ -32,8 +32,10 @@ body {
   color: var(--text);
   height: 100vh;
   display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
+.app-body { display: flex; flex: 1; overflow: hidden; }
 
 /* ── Header ────────────────────────────────────────────────── */
 header {
@@ -1556,6 +1558,7 @@ footer {
 </head>
 <body>
 
+<div class="app-body">
 <nav class="nav-rail" id="nav-rail">
   <button class="nav-rail-btn active" data-tab="servers" id="nav-servers">
     <span class="nav-rail-icon">&#x229E;</span>
@@ -1621,7 +1624,7 @@ footer {
 
   <!-- Header -->
   <header>
-    <h1 id="view-title"><span>EIDOS</span> MCP REGISTRY</h1>
+    <h1 id="view-title"><span>EIDOS</span> MCP REGISTRY <span style="color:#da7756;font-size:12px;font-weight:500;margin-left:6px;letter-spacing:0.02em">+ <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style="vertical-align:-2px;margin-right:2px"><rect x="7" y="1" width="2" height="2" fill="#da7756"/><rect x="7" y="13" width="2" height="2" fill="#da7756"/><rect x="1" y="7" width="2" height="2" fill="#da7756"/><rect x="13" y="7" width="2" height="2" fill="#da7756"/><rect x="3" y="3" width="2" height="2" fill="#da7756"/><rect x="11" y="3" width="2" height="2" fill="#da7756"/><rect x="3" y="11" width="2" height="2" fill="#da7756"/><rect x="11" y="11" width="2" height="2" fill="#da7756"/><rect x="6" y="6" width="4" height="4" fill="#da7756"/></svg>Claude Code</span></h1>
     <div class="header-actions">
       <button class="btn" id="btn-scan">Scan</button>
       <button class="btn btn-primary" id="btn-deploy">Deploy</button>
@@ -1740,6 +1743,7 @@ footer {
   </div>
 </div>
 
+</div><!-- /app-body -->
 <script type="module" src="/static/js/registry.js?v=20260315b"></script>
 </body>
 </html>

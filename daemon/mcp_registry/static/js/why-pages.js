@@ -267,11 +267,58 @@ export function renderWhyEidosView() {
   // Hero
   const hero = el('div', 'content-hero');
   const h1 = document.createElement('h1');
-  // Hardcoded trusted content
-  h1.innerHTML = 'Claude Code\'s MCP Problem — <span>and How to Fix It</span>';
+  // Hardcoded trusted content — no user input, safe static string
+  h1.innerHTML = 'Eidos AGI — <span>and Why We Built This</span>';
   hero.appendChild(h1);
-  hero.appendChild(para('Claude Code is extraordinary at writing software. But its MCP server management is flat, manual, and dangerous at scale. Here\'s what breaks, why it matters, and how the Eidos Registry fixes it.'));
+  hero.appendChild(para('An open-source project from Eidos AGI. We build tools that put humans in the cockpit of AI systems — not behind them, not removed from them.'));
   page.appendChild(hero);
+
+  // ── Section: About Eidos AGI
+  page.appendChild(el('h2', null, 'About Eidos AGI'));
+
+  page.appendChild(para('Eidos AGI is a one-person research lab founded by Daniel Shanklin in March 2025. The thesis is simple: <strong>the correct relationship between human and AI is a cockpit, not a chat box.</strong>'));
+
+  page.appendChild(para('Every AI product today ships one of two broken models. The <strong>vending machine</strong> — type a prompt, get an output, no relationship, no continuity. Or the <strong>drone</strong> — fire a task, hope for the best, find out what happened after. Neither is right. The cockpit is the third option: human and AI as a unit, where intent flows in and capability flows out.'));
+
+  page.appendChild(para('Eidos v1 generated a working Tetris game from an English sentence in 55 seconds. Within 12 months, Anthropic, OpenAI, Cognition, Microsoft, and CrewAI independently converged on the same architectural patterns — without having seen Eidos. The patterns were discovered, not designed. They are structural necessities of autonomous problem-solving.'));
+
+  const principles = el('div', 'feature-grid');
+  principles.appendChild(featureItem('\uD83E\uDDE0', 'The Loop',
+    'PERCEIVE \u2192 DECOMPOSE \u2192 SPECIALIZE \u2192 ACT \u2192 VERIFY \u2192 LEARN \u2192 RETRY. Everything else is a tool. Tools are output of the architecture, not part of it.'));
+  principles.appendChild(featureItem('\uD83D\uDEEB', 'The Cockpit',
+    'Human in the loop is the architecture, not the limitation. The AGI earns autonomy through demonstrated competence over time — from supervised operation to trusted autonomy.'));
+  principles.appendChild(featureItem('\uD83D\uDD10', 'The Identity',
+    'An AGI is a user, not a puppet. It should have its own accounts, credentials, audit trail, and killswitch — like any team member you onboard.'));
+  principles.appendChild(featureItem('\uD83C\uDF10', 'Open Source',
+    'Eidos tools are open source because the ecosystem needs shared infrastructure, not walled gardens. This registry exists to solve a real problem for real Claude Code users.'));
+  page.appendChild(principles);
+
+  page.appendChild(pullQuote('The most capable reasoning substrate in history, accessed through a vending machine slot. We\'re building the cockpit layer — persistent, accumulating, trust-building — that turns chat into collaboration.'));
+
+  // ── Section: The Eidos Ecosystem
+  page.appendChild(el('h2', null, 'The Eidos Ecosystem'));
+
+  page.appendChild(para('The MCP Registry is one piece of a broader toolkit. Every Eidos project serves the same cockpit philosophy — giving humans visibility and control over what AI systems are doing:'));
+
+  const ecosystem = el('div', 'feature-grid');
+  ecosystem.appendChild(featureItem('\uD83D\uDCCB', 'MCP Registry (this tool)',
+    'Scoping, deployment, and monitoring of MCP servers across Claude Code projects. The tool you\'re using right now.'));
+  ecosystem.appendChild(featureItem('\uD83E\uDDE0', 'Eidos v5',
+    'Multi-model deliberation system. Three AI models argue about your task in Socratic dialogue, then execute the winning plan. Dreamer, Doubter, Decider.'));
+  ecosystem.appendChild(featureItem('\uD83D\uDD11', 'Eidos Vault',
+    'Secure credential management for AI agents — secrets that agents can use but never see in plaintext.'));
+  ecosystem.appendChild(featureItem('\uD83D\uDCE7', 'Eidos Mail',
+    'Email integration as an MCP server — giving AI agents supervised access to communications.'));
+  ecosystem.appendChild(featureItem('\uD83D\uDD0D', 'Eidos CLI',
+    'Command-line interface for interacting with the Eidos ecosystem and managing AI workflows.'));
+  ecosystem.appendChild(featureItem('\u2705', 'Eidos Consent',
+    'Human-in-the-loop approval gates — AI proposes, human approves before execution.'));
+  page.appendChild(ecosystem);
+
+  // ── Transition to the tool
+  page.appendChild(el('h2', null, 'Why This Registry Exists'));
+
+  page.appendChild(para('Claude Code is extraordinary at writing software. But its MCP server management is flat, manual, and dangerous at scale. Here\'s what breaks, why it matters, and how the Eidos Registry fixes it.'));
 
   // ── Section: Your Numbers
   page.appendChild(el('h2', null, 'Your Environment Right Now'));
@@ -402,7 +449,7 @@ export function renderWhyEidosView() {
   bottomMetrics.appendChild(metricCard(`${m.serversWithSecrets}`, 'Servers with Secrets Protected'));
   page.appendChild(bottomMetrics);
 
-  page.appendChild(pullQuote('The Eidos MCP Registry doesn\'t replace Claude Code. It gives Claude Code the server management layer it should have had from the start — scoped, secure, and visible.'));
+  page.appendChild(pullQuote('The Eidos MCP Registry doesn\'t replace Claude Code. It gives Claude Code the server management layer it should have had from the start — scoped, secure, and visible. That\'s the cockpit philosophy: don\'t remove the human, give them better instruments.'));
 
   container.appendChild(page);
 }
