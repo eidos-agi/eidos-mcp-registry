@@ -15,13 +15,13 @@ NOTIFICATIONS_FILE = DATA_DIR / "notifications.json"
 PRIORITIES = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 
 NOTIFICATION_TYPES = {
-    "new_repo": {"priority": "low", "icon": "\U0001F4C1", "label": "New repo detected"},
-    "drift": {"priority": "medium", "icon": "\u26A0\uFE0F", "label": "Config drift detected"},
-    "health_failure": {"priority": "high", "icon": "\U0001F534", "label": "Server unhealthy"},
-    "stale_deploy": {"priority": "medium", "icon": "\u23F0", "label": "Stale deploy"},
-    "secrets_exposed": {"priority": "critical", "icon": "\U0001F6A8", "label": "Secrets exposed"},
-    "new_server": {"priority": "low", "icon": "\U0001F195", "label": "New server discovered"},
-    "gitignore_missing": {"priority": "medium", "icon": "\U0001F6E1\uFE0F", "label": "Gitignore missing"},
+    "new_repo": {"priority": "low", "icon": "\U0001F4C1", "label": "New repo needs MCP config"},
+    "drift": {"priority": "medium", "icon": "\u26A0\uFE0F", "label": "Repo config was edited outside the registry"},
+    "health_failure": {"priority": "high", "icon": "\U0001F534", "label": "MCP server is down"},
+    "stale_deploy": {"priority": "medium", "icon": "\u23F0", "label": "Repos are out of sync with registry"},
+    "secrets_exposed": {"priority": "critical", "icon": "\U0001F6A8", "label": "API keys found in a committed file"},
+    "new_server": {"priority": "low", "icon": "\U0001F195", "label": "New MCP server found on this machine"},
+    "gitignore_missing": {"priority": "medium", "icon": "\U0001F6E1\uFE0F", "label": "Repos could accidentally commit .mcp.json"},
 }
 
 

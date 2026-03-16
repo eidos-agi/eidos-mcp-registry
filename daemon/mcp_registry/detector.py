@@ -29,16 +29,20 @@ def detect_new_repos(store) -> int:
                 continue
 
             repo_name = Path(repo).name
+            label = group.get("label", gk)
+            server_names = ", ".join(group.get("servers", [])[:5])
             context = {"repo": repo, "group": gk}
             n = notifications.create_notification(
                 "new_repo",
-                f"New repo detected: {repo_name}",
-                f"{repo_name} exists in {group.get('label', gk)} but has no .mcp.json. "
-                f"Deploy to configure MCP servers for this repo.",
+                f"{repo_name} needs MCP servers",
+                f"A new repo \"{repo_name}\" was found in the {label} group, but it "
+                f"doesn't have a .mcp.json file yet. Without it, Claude Code won't "
+                f"load the group's servers ({server_names}) when working in this repo. "
+                f"Click Deploy to create the .mcp.json with the right servers.",
                 actions=[
-                    {"label": "Deploy", "endpoint": "/deploy",
+                    {"label": "Deploy to this group", "endpoint": "/deploy",
                      "method": "POST", "body": {"groups": [gk]}},
-                    {"label": "Ignore", "action": "dismiss"},
+                    {"label": "Skip", "action": "dismiss"},
                 ],
                 context=context,
             )
@@ -73,16 +77,21 @@ def detect_drift(store) -> int:
 
     for gk, paths in by_group.items():
         label = groups.get(gk, {}).get("label", gk)
+        repo_names = ", ".join(Path(p).parent.name for p in paths[:3])
+        more = f" and {len(paths) - 3} more" if len(paths) > 3 else ""
         context = {"group": gk, "files_changed": len(paths)}
         n = notifications.create_notification(
             "drift",
-            f"Config drift in {label}",
-            f"{len(paths)} repo(s) in {label} have .mcp.json files that differ "
-            f"from the registry. Deploy to reconcile.",
+            f"{label}: .mcp.json files don't match the registry",
+            f"{len(paths)} repo(s) in {label} have .mcp.json files that are different "
+            f"from what the registry expects. This can happen when someone edits a "
+            f".mcp.json by hand, or when you change server assignments without "
+            f"redeploying. Affected repos: {repo_names}{more}. "
+            f"Click Deploy to overwrite them with the correct config.",
             actions=[
-                {"label": "Deploy", "endpoint": "/deploy",
+                {"label": "Deploy to fix", "endpoint": "/deploy",
                  "method": "POST", "body": {"groups": [gk]}},
-                {"label": "Dismiss", "action": "dismiss"},
+                {"label": "Leave as-is", "action": "dismiss"},
             ],
             context=context,
         )
@@ -104,16 +113,20 @@ def detect_health_failures(store) -> int:
         health_ts = srv.get("health_ts", 0)
 
         if health == "failed" and (now - health_ts) > 300:
+            minutes_down = int((now - health_ts) / 60)
             context = {"server": name}
             n = notifications.create_notification(
                 "health_failure",
-                f"Server unhealthy: {name}",
-                f"{name} has been reporting as failed for "
-                f"{int((now - health_ts) / 60)} minutes.",
+                f"{name} has been down for {minutes_down} minutes",
+                f"The MCP server \"{name}\" has been failing health checks for "
+                f"{minutes_down} minutes. This means Claude Code can't use any of "
+                f"its tools right now. This usually happens when the server process "
+                f"crashed, the command path is wrong, or a dependency is missing. "
+                f"Try re-scanning to refresh the connection, or check the server logs.",
                 actions=[
-                    {"label": "Re-scan", "endpoint": "/scan",
+                    {"label": "Re-scan servers", "endpoint": "/scan",
                      "method": "POST", "body": None},
-                    {"label": "Dismiss", "action": "dismiss"},
+                    {"label": "Acknowledge", "action": "dismiss"},
                 ],
                 context=context,
             )
@@ -124,7 +137,7 @@ def detect_health_failures(store) -> int:
 
 
 def detect_stale_deploys(store) -> int:
-    """If any group has pending changes for >24 hours, notify."""
+    """If any group has pending changes, notify."""
     from mcp_registry.deployer import preview as deploy_preview
 
     try:
@@ -137,7 +150,7 @@ def detect_stale_deploys(store) -> int:
 
     # Group by group key
     by_group: dict[str, int] = {}
-    for path, change in changes.items():
+    for _path, change in changes.items():
         gk = change.get("group", "unknown")
         by_group[gk] = by_group.get(gk, 0) + 1
 
@@ -150,12 +163,15 @@ def detect_stale_deploys(store) -> int:
         context = {"group": gk, "type": "stale_deploy"}
         n = notifications.create_notification(
             "stale_deploy",
-            f"Stale deploy: {label}",
-            f"{label} has {num_changes} pending change(s) that haven't been deployed.",
+            f"{label}: repos are out of sync",
+            f"You've changed which servers belong to {label}, but the .mcp.json "
+            f"files in {num_changes} repo(s) still have the old configuration. "
+            f"Until you deploy, Claude Code will load the wrong servers when "
+            f"working in these repos. Click Deploy to update them.",
             actions=[
-                {"label": "Deploy Now", "endpoint": "/deploy",
+                {"label": "Deploy now", "endpoint": "/deploy",
                  "method": "POST", "body": {"groups": [gk]}},
-                {"label": "Dismiss", "action": "dismiss"},
+                {"label": "Later", "action": "dismiss"},
             ],
             context=context,
         )
@@ -195,17 +211,23 @@ def detect_gitignore_missing(store) -> int:
 
         if unprotected:
             label = group.get("label", gk)
+            sample = ", ".join(unprotected[:3])
+            more = f" and {len(unprotected) - 3} more" if len(unprotected) > 3 else ""
             context = {"group": gk, "unprotected_repos": unprotected[:10]}
             n = notifications.create_notification(
                 "gitignore_missing",
-                f"Gitignore missing in {label}",
-                f"{len(unprotected)} repo(s) in {label} have .mcp.json deployed but "
-                f"not in .gitignore. Secrets are masked as ${{VAR}} references, but "
-                f"machine-specific paths would pollute git history.",
+                f"{label}: .mcp.json could be accidentally committed to git",
+                f"{len(unprotected)} repo(s) in {label} have .mcp.json files but "
+                f"haven't added .mcp.json to their .gitignore. If someone runs "
+                f"\"git add .\" they'll commit machine-specific paths into version "
+                f"control. Secrets are already masked as ${{VAR}} references, so "
+                f"this is about keeping git history clean, not credential exposure. "
+                f"Repos: {sample}{more}. Click Fix to add .mcp.json to every "
+                f"repo's .gitignore in this group.",
                 actions=[
-                    {"label": "Fix Gitignore", "endpoint": f"/groups/{gk}/gitignore",
+                    {"label": "Fix all .gitignore files", "endpoint": f"/groups/{gk}/gitignore",
                      "method": "POST", "body": None},
-                    {"label": "Dismiss", "action": "dismiss"},
+                    {"label": "Not needed", "action": "dismiss"},
                 ],
                 context=context,
             )
