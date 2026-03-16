@@ -108,20 +108,97 @@ export function renderDocsView() {
   // Hero
   // ═══════════════════════════════════════════════════
 
-  const hero = el('div', 'padding:32px 0;border-bottom:1px solid var(--border);margin-bottom:24px');
+  // ═══════════════════════════════════════════════════
+  // TIER 1: Reader's Digest (2-3 sentences)
+  // ═══════════════════════════════════════════════════
+
+  const hero = el('div', 'padding:32px 0;border-bottom:1px solid var(--border);margin-bottom:28px');
   hero.appendChild(el('h1', 'font-size:32px;font-weight:700;line-height:1.2;margin-bottom:12px', 'Documentation'));
-  const subtitle = el('p', 'font-size:16px;color:var(--text-dim)');
-  subtitle.appendChild(document.createTextNode('Everything you need to understand and use the Eidos MCP Registry '));
-  const ccBadge = el('span', 'color:#da7756;font-weight:600');
-  ccBadge.textContent = 'for Claude Code';
-  subtitle.appendChild(ccBadge);
-  subtitle.appendChild(document.createTextNode(', from first launch to advanced workflows.'));
-  hero.appendChild(subtitle);
+  hero.appendChild(richPara([
+    'The Eidos MCP Registry scopes your MCP servers to the projects that need them. Claude\u2019s prompt caching makes extra tool schemas cheap to process, but they still consume context window space \u2014 causing earlier conversation loss, wrong tool picks, and degraded quality in long sessions. The registry fixes this: assign servers to groups, deploy scoped configs, and keep each project\u2019s context clean.'
+  ]));
   page.appendChild(hero);
 
   // ═══════════════════════════════════════════════════
-  // Table of Contents
+  // TIER 2: The Box (self-contained summary)
   // ═══════════════════════════════════════════════════
+
+  const box = el('div', 'border:2px solid var(--accent);border-radius:8px;padding:28px 24px;margin-bottom:36px;background:var(--bg-card)');
+
+  box.appendChild(el('div', 'font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px', 'Summary'));
+
+  // The problem
+  box.appendChild(el('h2', 'font-size:18px;font-weight:700;color:var(--text);margin-bottom:10px', 'The Problem'));
+  const probP = el('p', 'font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px');
+  probP.textContent = 'You have dozens of MCP servers. Every Claude Code conversation carries all of their tool schemas in the context window \u2014 typically 30,000\u201370,000 tokens. Claude\u2019s prompt caching makes this cheap to process (90% discount after the first turn), but the schemas still occupy space in the context window. Caching solves cost. It does not solve space.';
+  box.appendChild(probP);
+
+  // Three problems caching can't fix
+  box.appendChild(el('h3', 'font-size:14px;font-weight:600;color:var(--accent);margin-bottom:8px', 'Three problems caching cannot fix'));
+
+  const threeProbs = el('div', 'margin-bottom:20px');
+  const probData = [
+    ['\uD83D\uDDDC\uFE0F', 'Context compression', 'In long sessions (100+ messages), Claude discards earlier conversation to fit within the context limit. Unused tool schemas accelerate this. Every token of schema overhead is a token not available for your code and reasoning.'],
+    ['\uD83C\uDFAF', 'Tool confusion', 'When 4 servers all expose a "search" tool, Claude picks the wrong one ~25% of the time. Each mistake costs a full round-trip: reason, call, error, retry. Caching doesn\u2019t help with selection accuracy.'],
+    ['\uD83D\uDD12', 'Confidentiality', 'Client A\u2019s Wrike board schema is visible when you work in Client B\u2019s repo. Not because Claude calls it \u2014 but because the schema describes what it could do. In regulated environments, that\u2019s a data boundary violation.'],
+  ];
+  for (const [icon, title, desc] of probData) {
+    const row = el('div', 'display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)');
+    row.appendChild(el('span', 'font-size:20px;flex-shrink:0;padding-top:2px', icon));
+    const content = el('div');
+    content.appendChild(el('div', 'font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px', title));
+    content.appendChild(el('div', 'font-size:13px;color:var(--text-dim);line-height:1.6', desc));
+    row.appendChild(content);
+    threeProbs.appendChild(row);
+  }
+  box.appendChild(threeProbs);
+
+  // The solution
+  box.appendChild(el('h2', 'font-size:18px;font-weight:700;color:var(--text);margin:20px 0 10px', 'The Solution'));
+  const solP = el('p', 'font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px');
+  solP.textContent = 'The registry organizes MCP servers into groups. Each group maps to a set of repos. Deploy writes scoped .mcp.json files so each project loads only the tools it needs. Promote removes servers from user scope so they stop leaking everywhere.';
+  box.appendChild(solP);
+
+  // Lifecycle
+  const lifecycle = el('div', 'display:flex;gap:8px;align-items:center;justify-content:center;margin:16px 0 20px;flex-wrap:wrap');
+  const steps = ['Scan', 'Assign', 'Deploy', 'Promote'];
+  steps.forEach((step, i) => {
+    const badge = el('span', 'font-size:13px;font-weight:600;color:var(--accent);border:1px solid var(--accent);border-radius:16px;padding:4px 14px', step);
+    lifecycle.appendChild(badge);
+    if (i < steps.length - 1) lifecycle.appendChild(el('span', 'color:var(--text-dim);font-size:16px', '\u2192'));
+  });
+  box.appendChild(lifecycle);
+
+  // Key distinction
+  box.appendChild(el('h3', 'font-size:14px;font-weight:600;color:var(--accent);margin:20px 0 8px', 'The key distinction'));
+  const distGrid = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px');
+
+  const cachingCard = el('div', 'border:1px solid var(--border);border-radius:6px;padding:14px');
+  cachingCard.appendChild(el('div', 'font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px', 'CACHING'));
+  cachingCard.appendChild(el('div', 'font-size:13px;color:var(--text-dim);line-height:1.6', 'Makes tool schemas cheaper to read. Like a library discount \u2014 the book costs less to check out, but it still takes up the same space on your desk.'));
+  distGrid.appendChild(cachingCard);
+
+  const scopingCard = el('div', 'border:1px solid var(--accent);border-radius:6px;padding:14px');
+  scopingCard.appendChild(el('div', 'font-size:12px;font-weight:600;color:var(--accent);margin-bottom:6px', 'SCOPING'));
+  scopingCard.appendChild(el('div', 'font-size:13px;color:var(--text-dim);line-height:1.6', 'Removes tool schemas entirely. The book isn\u2019t on your desk at all. Less space used, less confusion, less context pressure. This is what the registry does.'));
+  distGrid.appendChild(scopingCard);
+  box.appendChild(distGrid);
+
+  // Bottom line
+  const blBox = el('div', 'background:var(--bg);border-radius:6px;padding:14px;margin-top:8px');
+  blBox.appendChild(el('div', 'font-size:12px;font-weight:600;color:var(--accent);margin-bottom:4px', 'BOTTOM LINE'));
+  const blText = el('div', 'font-size:13px;color:var(--text-dim);line-height:1.6');
+  blText.textContent = 'Short coding sessions: caching handles cost, scoping is optional. Long sessions, multi-tool workflows, multi-client work: scoping prevents compression, confusion, and confidentiality breaches that caching cannot fix.';
+  blBox.appendChild(blText);
+  box.appendChild(blBox);
+
+  page.appendChild(box);
+
+  // ═══════════════════════════════════════════════════
+  // TIER 3: Detail (reference docs)
+  // ═══════════════════════════════════════════════════
+
+  page.appendChild(el('div', 'font-size:11px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:16px;padding-top:8px;border-top:1px solid var(--border)', 'Detailed Reference'));
 
   const tocSections = [
     ['getting-started', 'Getting Started'],
@@ -137,9 +214,7 @@ export function renderDocsView() {
     ['architecture', 'Architecture'],
   ];
 
-  const toc = el('div', 'margin-bottom:28px');
-  toc.appendChild(el('div', 'font-size:12px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px', 'Contents'));
-  const tocGrid = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:8px 24px');
+  const tocGrid = el('div', 'display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-bottom:28px');
   for (const [id, label] of tocSections) {
     const link = el('a', 'font-size:13px;color:var(--accent);text-decoration:none;padding:4px 0;cursor:pointer;display:block', label);
     link.href = `#${id}`;
@@ -150,8 +225,7 @@ export function renderDocsView() {
     });
     tocGrid.appendChild(link);
   }
-  toc.appendChild(tocGrid);
-  page.appendChild(toc);
+  page.appendChild(tocGrid);
 
   // ═══════════════════════════════════════════════════
   // 1. Getting Started
