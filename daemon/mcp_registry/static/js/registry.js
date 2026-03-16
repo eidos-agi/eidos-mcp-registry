@@ -10,7 +10,7 @@ import { renderGroupsView, handleDeployProgress } from './groups-view.js';
 import { initNav } from './nav.js';
 import './editor.js';    // side-effects: registers event listeners
 import './toast.js';     // side-effects: none yet (placeholder)
-import { initActivity, renderActivityLogView } from './activity.js';
+import { initActivity, renderActivityLogView } from './activity-log.js';
 import { renderWhyMcpView, renderWhyEidosView, renderRebuttalView, renderCliVsMcpView } from './why-pages.js';
 import { renderTokenSavingsView } from './token-savings.js';
 import { renderLazyLoadingView } from './lazy-loading.js';
