@@ -5,14 +5,34 @@ build-backend = "hatchling.build"
 [project]
 name = "eidos-mcp-registry"
 version = "0.1.0"
-description = "Drag-and-drop MCP server scoping across workspace groups. Like Railway for MCP config."
+description = "Drag-and-drop MCP server scoping for Claude Code."
 requires-python = ">=3.11"
+license = "MIT"
+authors = [
+    { name = "Daniel Shanklin", email = "daniel@eidos-agi.com" },
+]
+readme = "../README.md"
+keywords = ["mcp", "claude-code", "scoping", "registry", "ai-tools"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
 dependencies = [
     "httpx>=0.27",
     "fastapi>=0.109",
     "uvicorn[standard]>=0.27",
     "click>=8.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/eidos-agi/eidos-mcp-registry"
+Repository = "https://github.com/eidos-agi/eidos-mcp-registry"
+Issues = "https://github.com/eidos-agi/eidos-mcp-registry/issues"
 
 [project.optional-dependencies]
 test = [
