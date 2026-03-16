@@ -14,6 +14,7 @@ import { initActivity } from './activity.js';
 import { renderWhyMcpView, renderWhyEidosView, renderRebuttalView, renderCliVsMcpView } from './why-pages.js';
 import { renderTokenSavingsView } from './token-savings.js';
 import { renderLazyLoadingView } from './lazy-loading.js';
+import { renderNotificationsView, updateNotificationBadge } from './notifications.js';
 
 // ── State ────────────────────────────────────────────────────────
 
@@ -114,7 +115,7 @@ export function switchTab(tab) {
   state.activeTab = tab;
 
   // Show/hide the 5 view divs
-  const views = ['servers', 'groups', 'store', 'why-mcp', 'why-eidos', 'rebuttal', 'cli-vs-mcp', 'token-savings', 'lazy-loading'];
+  const views = ['servers', 'groups', 'notifications', 'store', 'why-mcp', 'why-eidos', 'rebuttal', 'cli-vs-mcp', 'token-savings', 'lazy-loading'];
   for (const v of views) {
     const el = document.getElementById(`view-${v}`);
     if (el) el.style.display = v === tab ? '' : 'none';
@@ -182,8 +183,10 @@ function renderStoreView() {
 export function renderAll() {
   renderFooter();
   renderPendingBanner();
+  updateNotificationBadge();
   if (state.activeTab === 'servers') renderServersView();
   else if (state.activeTab === 'groups') renderGroupsView();
+  else if (state.activeTab === 'notifications') renderNotificationsView();
   else if (state.activeTab === 'store') renderStoreView();
   else if (state.activeTab === 'why-mcp') renderWhyMcpView();
   else if (state.activeTab === 'why-eidos') renderWhyEidosView();

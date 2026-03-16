@@ -97,6 +97,100 @@ header h1 span { color: var(--accent); }
 .nav-rail-icon { font-size: 18px; line-height: 1; }
 .nav-rail-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
 
+/* ── Notification Badge ─────────────────────────────────────── */
+.notification-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--red);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+}
+.notification-badge.warn { background: var(--orange); }
+
+/* ── Notification Cards ─────────────────────────────────────── */
+.notification-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 10px;
+  transition: border-color 0.15s;
+}
+.notification-card.critical { border-left: 3px solid var(--red); }
+.notification-card.high { border-left: 3px solid var(--orange); }
+.notification-card.medium { border-left: 3px solid var(--accent); }
+.notification-card.low { border-left: 3px solid var(--border); }
+.notification-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.notification-icon { font-size: 18px; }
+.notification-title { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; }
+.notification-priority {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+.priority-critical { background: rgba(248,81,73,0.15); color: var(--red); }
+.priority-high { background: rgba(210,153,34,0.15); color: var(--orange); }
+.priority-medium { background: var(--accent-dim); color: var(--accent); }
+.priority-low { background: var(--bg-hover); color: var(--text-dim); }
+.notification-detail {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.notification-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.notification-time {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+.notifications-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 10px;
+}
+.notifications-toolbar .tab-group {
+  display: flex;
+  gap: 4px;
+}
+.notifications-toolbar .tab-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 12px;
+}
+.notifications-toolbar .tab-btn.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* ── Pending Banner ───────────────────────────────────────── */
 .pending-banner {
   display: none;
@@ -1468,6 +1562,11 @@ footer {
     <span class="nav-rail-icon">&#x25A4;</span>
     <span class="nav-rail-label">Groups</span>
   </button>
+  <button class="nav-rail-btn" data-tab="notifications" id="nav-notifications" style="position:relative">
+    <span class="nav-rail-icon">&#x1F514;</span>
+    <span class="nav-rail-label">Inbox</span>
+    <span class="notification-badge" id="notification-badge" style="display:none"></span>
+  </button>
   <button class="nav-rail-btn" data-tab="store" id="nav-store">
     <span class="nav-rail-icon">&#x25C9;</span>
     <span class="nav-rail-label">Store</span>
@@ -1535,6 +1634,8 @@ footer {
     </div>
     <!-- Groups view -->
     <div id="view-groups" style="display:none"></div>
+    <!-- Notifications view -->
+    <div id="view-notifications" style="display:none"></div>
     <!-- Store view -->
     <div id="view-store" style="display:none"></div>
     <!-- Why MCP view -->

@@ -24,6 +24,8 @@ from mcp_registry import activity
 from mcp_registry import webhook
 from mcp_registry import deploy_history
 from mcp_registry import catalog as catalog_mod
+from mcp_registry import notifications
+from mcp_registry import detector
 from mcp_registry.renderer import REGISTRY_HTML
 
 import sys
@@ -56,6 +58,14 @@ async def lifespan(app: FastAPI):
     summary = await loop.run_in_executor(None, full_scan, _store, None)
     logger.info("Initial scan: %d servers, %d groups",
                 summary["servers_found"], summary["groups_found"])
+
+    # Run initial notification detection
+    try:
+        det_count = await loop.run_in_executor(None, detector.run_all_detections, _store)
+        if det_count:
+            logger.info("Initial detection: %d notification(s) created", det_count)
+    except Exception as e:
+        logger.warning("Initial detection failed: %s", e)
 
     # Start health monitor
     _health_task = asyncio.create_task(health_monitor(_store))
@@ -775,6 +785,42 @@ async def delete_webhook(group_key: str):
         return JSONResponse({"error": "Group not found"}, status_code=404)
     activity.log_event("webhook_config", {"group": group_key, "action": "removed"})
     return {"ok": True, "group": group_key}
+
+
+# ── Notifications ────────────────────────────────────────────────
+
+@app.get("/notifications")
+async def get_notifications(status: str = "pending"):
+    return notifications.get_notifications(status)
+
+
+@app.get("/notifications/count")
+async def notification_count():
+    return notifications.count_pending()
+
+
+@app.post("/notifications/{nid}/approve")
+async def approve_notification(nid: str):
+    result = notifications.approve_notification(nid)
+    if not result:
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    return result
+
+
+@app.post("/notifications/{nid}/dismiss")
+async def dismiss_notification(nid: str):
+    result = notifications.dismiss_notification(nid)
+    if not result:
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    return result
+
+
+@app.post("/notifications/detect")
+async def run_detection():
+    """Manually trigger detection scan."""
+    loop = asyncio.get_event_loop()
+    count = await loop.run_in_executor(None, detector.run_all_detections, _store)
+    return {"detected": count}
 
 
 # ── SSE ──────────────────────────────────────────────────────────
