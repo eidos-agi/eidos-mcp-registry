@@ -200,7 +200,8 @@ def detect_gitignore_missing(store) -> int:
                 "gitignore_missing",
                 f"Gitignore missing in {label}",
                 f"{len(unprotected)} repo(s) in {label} have .mcp.json deployed but "
-                f"not in .gitignore. Secrets could be committed.",
+                f"not in .gitignore. Secrets are masked as ${{VAR}} references, but "
+                f"machine-specific paths would pollute git history.",
                 actions=[
                     {"label": "Fix Gitignore", "endpoint": f"/groups/{gk}/gitignore",
                      "method": "POST", "body": None},

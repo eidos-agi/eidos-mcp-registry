@@ -21,7 +21,7 @@ NOTIFICATION_TYPES = {
     "stale_deploy": {"priority": "medium", "icon": "\u23F0", "label": "Stale deploy"},
     "secrets_exposed": {"priority": "critical", "icon": "\U0001F6A8", "label": "Secrets exposed"},
     "new_server": {"priority": "low", "icon": "\U0001F195", "label": "New server discovered"},
-    "gitignore_missing": {"priority": "high", "icon": "\U0001F6E1\uFE0F", "label": "Gitignore missing"},
+    "gitignore_missing": {"priority": "medium", "icon": "\U0001F6E1\uFE0F", "label": "Gitignore missing"},
 }
 
 
