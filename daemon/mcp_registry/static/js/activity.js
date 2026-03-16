@@ -5,6 +5,7 @@
 import { api } from './registry.js';
 
 let activityOpen = false;
+let _logFilter = null;
 
 const EVENT_ICONS = {
   assign: '\u2795',
@@ -212,23 +213,50 @@ export async function renderActivityLogView() {
     return;
   }
 
-  // Summary strip
+  // Filter state
+  let activeFilter = _logFilter;
+
+  // Filter bar
+  const filterBar = document.createElement('div');
+  filterBar.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center';
+
+  // "All" button
+  const allBtn = document.createElement('button');
+  allBtn.style.cssText = `font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid ${!activeFilter ? 'var(--accent)' : 'var(--border)'};background:${!activeFilter ? 'var(--accent-dim)' : 'var(--bg-card)'};color:${!activeFilter ? 'var(--accent)' : 'var(--text-dim)'};cursor:pointer`;
+  allBtn.textContent = `All (${events.length})`;
+  allBtn.addEventListener('click', () => { _logFilter = null; renderActivityLogView(); });
+  filterBar.appendChild(allBtn);
+
+  // Type badges as filter buttons
   const typeCounts = {};
   for (const e of events) {
     typeCounts[e.type] = (typeCounts[e.type] || 0) + 1;
   }
-  const summary = document.createElement('div');
-  summary.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px';
   for (const [type, count] of Object.entries(typeCounts).sort((a, b) => b[1] - a[1])) {
-    const badge = document.createElement('span');
-    badge.style.cssText = 'font-size:11px;padding:3px 10px;border-radius:10px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim)';
+    const isActive = activeFilter === type;
+    const badge = document.createElement('button');
+    badge.style.cssText = `font-size:11px;padding:3px 10px;border-radius:10px;border:1px solid ${isActive ? 'var(--accent)' : 'var(--border)'};background:${isActive ? 'var(--accent-dim)' : 'var(--bg-card)'};color:${isActive ? 'var(--accent)' : 'var(--text-dim)'};cursor:pointer`;
     badge.textContent = `${EVENT_ICONS[type] || '\u2022'} ${EVENT_LABELS[type] || type}: ${count}`;
-    summary.appendChild(badge);
+    badge.addEventListener('click', () => {
+      _logFilter = isActive ? null : type;
+      renderActivityLogView();
+    });
+    filterBar.appendChild(badge);
   }
-  page.appendChild(summary);
+  page.appendChild(filterBar);
+
+  // Filtered events
+  const filtered = activeFilter ? events.filter(e => e.type === activeFilter) : events;
+
+  if (activeFilter && filtered.length < events.length) {
+    const showing = document.createElement('div');
+    showing.style.cssText = 'font-size:12px;color:var(--text-dim);margin-bottom:12px';
+    showing.textContent = `Showing ${filtered.length} of ${events.length} events (filtered by ${EVENT_LABELS[activeFilter] || activeFilter})`;
+    page.appendChild(showing);
+  }
 
   // Event list
-  for (const event of events) {
+  for (const event of filtered) {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)';
 
@@ -246,6 +274,11 @@ export async function renderActivityLogView() {
     const time = document.createElement('div');
     time.style.cssText = 'font-size:11px;color:var(--text-dim);margin-top:2px';
     time.textContent = formatTimeFull(event.ts);
+
+    // Type tag
+    const typeTag = document.createElement('span');
+    typeTag.style.cssText = 'font-size:10px;color:var(--text-dim);background:var(--bg-hover);padding:1px 6px;border-radius:3px;margin-left:8px';
+    typeTag.textContent = event.type;
 
     content.append(text, time);
 
@@ -266,7 +299,7 @@ export async function renderActivityLogView() {
       content.append(detailBtn, detailBlock);
     }
 
-    row.append(icon, content);
+    row.append(icon, content, typeTag);
     page.appendChild(row);
   }
 
