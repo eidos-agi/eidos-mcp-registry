@@ -211,6 +211,85 @@ def detect_gitignore_missing(store) -> int:
     return count
 
 
+def detect_gitignore_tracked(store) -> int:
+    """Find repos where .mcp.json is in .gitignore but still tracked by git.
+
+    Adding a file to .gitignore does NOT untrack it if it was committed before
+    the .gitignore entry was added. The file continues to be tracked (and
+    pushed) despite .gitignore. The fix is `git rm --cached .mcp.json`.
+    """
+    import subprocess
+
+    snapshot = store.snapshot()
+    groups = snapshot["groups"]
+    count = 0
+
+    for gk, group in groups.items():
+        if gk == "__universal__" or not group.get("path"):
+            continue
+        if not group.get("servers"):
+            continue
+
+        repos = list_repos_in_group(group["path"])
+        still_tracked = []
+
+        for repo in repos:
+            repo_path = Path(repo)
+            mcp_path = repo_path / ".mcp.json"
+            gitignore = repo_path / ".gitignore"
+
+            # Only check repos that have .mcp.json AND it's in .gitignore
+            if not mcp_path.exists():
+                continue
+            if not gitignore.exists():
+                continue
+            try:
+                if ".mcp.json" not in gitignore.read_text():
+                    continue
+            except OSError:
+                continue
+
+            # .mcp.json is gitignored — but is git still tracking it?
+            try:
+                result = subprocess.run(
+                    ["git", "ls-files", "--error-unmatch", ".mcp.json"],
+                    cwd=str(repo_path),
+                    capture_output=True,
+                    timeout=5,
+                )
+                # exit code 0 = file IS tracked (bad)
+                if result.returncode == 0:
+                    still_tracked.append(repo_path.name)
+            except (subprocess.TimeoutExpired, OSError):
+                continue
+
+        if still_tracked:
+            label = group.get("label", gk)
+            sample = ", ".join(still_tracked[:3])
+            more = f" and {len(still_tracked) - 3} more" if len(still_tracked) > 3 else ""
+            context = {"group": gk, "tracked_repos": still_tracked[:10]}
+            n = notifications.create_notification(
+                "gitignore_tracked",
+                f"{label}: .mcp.json is gitignored but still tracked by git",
+                f"{len(still_tracked)} repo(s) in {label} have .mcp.json in "
+                f".gitignore, but the file was committed before the .gitignore "
+                f"entry was added. Git is still tracking it — pushes will still "
+                f"include .mcp.json with machine-specific paths (or secrets if "
+                f"committed before masking was enabled). "
+                f"Repos: {sample}{more}. "
+                f"Fix: run `git rm --cached .mcp.json` in each repo to untrack "
+                f"the file without deleting it from disk.",
+                actions=[
+                    {"label": "Acknowledge", "action": "dismiss"},
+                ],
+                context=context,
+            )
+            if n:
+                count += 1
+
+    return count
+
+
 def run_all_detections(store) -> int:
     """Run all detectors. Returns total new notifications created."""
     total = 0
@@ -219,6 +298,7 @@ def run_all_detections(store) -> int:
         ("drift", detect_drift),
         ("health_failures", detect_health_failures),
         ("gitignore_missing", detect_gitignore_missing),
+        ("gitignore_tracked", detect_gitignore_tracked),
     ]
     for name, fn in detectors:
         try:

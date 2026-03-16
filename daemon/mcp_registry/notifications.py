@@ -22,6 +22,7 @@ NOTIFICATION_TYPES = {
     "secrets_exposed": {"priority": "critical", "icon": "\U0001F6A8", "label": "API keys found in a committed file"},
     "new_server": {"priority": "low", "icon": "\U0001F195", "label": "New MCP server found on this machine"},
     "gitignore_missing": {"priority": "medium", "icon": "\U0001F6E1\uFE0F", "label": "Repos could accidentally commit .mcp.json"},
+    "gitignore_tracked": {"priority": "high", "icon": "\U0001F6A8", "label": ".mcp.json is gitignored but still tracked by git"},
 }
 
 

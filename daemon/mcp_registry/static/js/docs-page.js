@@ -357,7 +357,7 @@ export function renderDocsView() {
     [{bold: 'Manual trigger'}, ' \u2014 click the ', {bold: 'Run Detection'}, ' button at the top of the Inbox tab'],
   ]));
 
-  page.appendChild(subTitle('The 4 Detectors'));
+  page.appendChild(subTitle('The 5 Detectors'));
 
   page.appendChild(infoBox(
     '1. New Repos',
@@ -381,6 +381,12 @@ export function renderDocsView() {
     '4. Missing Gitignore',
     'Scans repos in each group for .mcp.json files that aren\'t listed in .gitignore. Since .mcp.json contains machine-specific paths, committing it to git pollutes history across team members. The notification offers a bulk-fix to add .mcp.json to all affected .gitignore files.',
     'var(--accent)'
+  ));
+
+  page.appendChild(infoBox(
+    '5. Gitignored But Still Tracked',
+    'Catches the subtle case where .mcp.json IS in .gitignore but was committed before the .gitignore entry was added. Git continues tracking the file despite .gitignore \u2014 pushes will still include it. The fix is `git rm --cached .mcp.json` to untrack the file without deleting it from disk. This detector runs `git ls-files` in each repo to catch exactly this scenario.',
+    'var(--red)'
   ));
 
   page.appendChild(subTitle('How Notifications Are Created'));
