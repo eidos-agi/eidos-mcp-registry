@@ -1740,7 +1740,7 @@ footer {
   </div>
 </div>
 
-<script type="module" src="/static/js/registry.js"></script>
+<script type="module" src="/static/js/registry.js?v=20260315b"></script>
 </body>
 </html>
 """

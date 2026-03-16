@@ -96,6 +96,15 @@ _static_dir = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
 
+@app.middleware("http")
+async def no_cache_js(request, call_next):
+    response = await call_next(request)
+    if request.url.path.endswith(".js"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+    return response
+
+
 # ── Models ───────────────────────────────────────────────────────
 
 class AssignRequest(BaseModel):
