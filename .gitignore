@@ -6,3 +6,4 @@ build/
 .venv/
 *.DS_Store
 .mcp.json
+benchmarks/*-servers.mcp.json

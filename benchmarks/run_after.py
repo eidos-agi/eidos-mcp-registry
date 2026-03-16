@@ -1,22 +1,20 @@
 #!/usr/bin/env python3
 """
-Benchmark runner — runs 3 tasks using Claude Code Agent SDK.
-Run with --phase before or --phase after.
+Benchmark: prove coding is better with fewer MCP servers.
 
-Before: temporarily removes .mcp.json so all user-scope servers load (unscoped).
-After:  uses the deployed .mcp.json (scoped to 10 servers).
+--phase before: 27 servers (all-servers.mcp.json)
+--phase after:  5 servers (scoped-servers.mcp.json)
 
-MUST be run from a regular terminal, NOT from inside a Claude Code session.
-Run `claude /login` first if not authenticated.
+Same tasks, same SDK, same machine. Only the server count changes.
 
-Usage:
-    python benchmarks/run_after.py --phase after
-    python benchmarks/run_after.py --phase before
+Run from a regular terminal (not inside Claude Code).
+Run `claude /login` first if needed.
 """
 
 import argparse
 import asyncio
 import json
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -33,6 +31,12 @@ from claude_agent_sdk import (
 
 REPO = Path("/Users/dshanklinbv/repos-eidos-agi/eidos-mcp-registry")
 RESULTS = REPO / "benchmarks" / "results"
+BENCHMARKS = REPO / "benchmarks"
+
+CONFIGS = {
+    "before": BENCHMARKS / "all-servers.mcp.json",      # 27 servers
+    "after":  BENCHMARKS / "scoped-servers.mcp.json",    # 5 servers
+}
 
 TASKS = {
     "1": {
@@ -68,17 +72,22 @@ TASKS = {
 
 async def run_task(task_num: str, phase: str):
     task = TASKS[task_num]
-    print(f"\n{'='*60}")
-    print(f"  TASK {task_num}: {task['name']} — {phase.upper()}")
-    print(f"{'='*60}")
-
+    config_path = CONFIGS[phase]
     mcp_json = REPO / ".mcp.json"
     mcp_backup = REPO / ".mcp.json.benchmark-backup"
 
-    # For "before" runs: temporarily remove .mcp.json so user-scope servers load
-    if phase == "before" and mcp_json.exists():
+    with open(config_path) as f:
+        server_count = len(json.load(f).get("mcpServers", {}))
+
+    print(f"\n{'='*60}")
+    print(f"  TASK {task_num}: {task['name']}")
+    print(f"  Phase: {phase.upper()} ({server_count} servers)")
+    print(f"{'='*60}")
+
+    # Swap in the right config
+    if mcp_json.exists():
         mcp_json.rename(mcp_backup)
-        print("  [setup] Removed .mcp.json — running unscoped")
+    shutil.copy2(config_path, mcp_json)
 
     try:
         options = ClaudeAgentOptions(
@@ -98,28 +107,24 @@ async def run_task(task_num: str, phase: str):
                 if isinstance(message, AssistantMessage):
                     for block in message.content:
                         if isinstance(block, TextBlock):
-                            preview = block.text[:100].replace('\n', ' ')
+                            preview = block.text[:80].replace('\n', ' ')
                             print(f"  ... {preview}")
                         elif isinstance(block, ToolUseBlock):
                             tool_calls.append(block.name)
-                            print(f"  [tool] {block.name}")
 
                 elif isinstance(message, ResultMessage):
                     duration = time.time() - start
-
-                    # Extract usage dict — contains token breakdown
                     usage = message.usage or {}
 
                     result = {
                         "task": task_num,
                         "task_name": task["name"],
                         "phase": phase,
-                        "state": "unscoped_all_servers" if phase == "before" else "scoped_10_servers_via_mcp_json",
+                        "server_count": server_count,
                         "collected_at": datetime.now(timezone.utc).isoformat(),
                         "duration_seconds": int(duration),
                         "duration_human": f"{int(duration // 60)}m {int(duration % 60)}s",
                         "duration_ms": getattr(message, "duration_ms", 0),
-                        "duration_api_ms": getattr(message, "duration_api_ms", 0),
                         "tokens": {
                             "input": usage.get("input_tokens", 0),
                             "output": usage.get("output_tokens", 0),
@@ -145,62 +150,45 @@ async def run_task(task_num: str, phase: str):
                     with open(out_path, "w") as f:
                         json.dump(result, f, indent=2)
 
-                    print(f"\n  Duration:    {result['duration_human']} (wall) / {result['duration_ms']}ms (sdk) / {result['duration_api_ms']}ms (api)")
-                    print(f"  Tokens in:   {result['tokens']['input']:,}")
-                    print(f"  Tokens out:  {result['tokens']['output']:,}")
-                    print(f"  Tokens tot:  {result['tokens']['total']:,}")
-                    print(f"  Cache read:  {result['tokens']['cache_read']:,}")
-                    print(f"  Cost:        ${result['cost_usd']:.4f}" if result['cost_usd'] else "  Cost:        N/A")
-                    print(f"  Tool calls:  {len(tool_calls)}")
-                    print(f"  Turns:       {result['num_turns']}")
-                    print(f"  Error:       {result['is_error']}")
-                    print(f"  Usage raw:   {json.dumps(usage)[:200]}")
-                    print(f"  Saved:       {out_path}")
+                    cost_str = f"${result['cost_usd']:.4f}" if result['cost_usd'] else "N/A"
+                    print(f"\n  Duration:  {result['duration_human']}")
+                    print(f"  Tokens:    {result['tokens']['total']:,} (in:{result['tokens']['input']:,} out:{result['tokens']['output']:,})")
+                    print(f"  Cost:      {cost_str}")
+                    print(f"  Tools:     {len(tool_calls)}  Turns: {result['num_turns']}")
+                    if usage:
+                        print(f"  Usage:     {json.dumps(usage)[:200]}")
+                    print(f"  Saved:     {out_path}")
                     return result
 
     finally:
-        # Restore .mcp.json if we moved it
-        if phase == "before" and mcp_backup.exists():
+        # Restore original .mcp.json
+        mcp_json.unlink(missing_ok=True)
+        if mcp_backup.exists():
             mcp_backup.rename(mcp_json)
-            print("  [cleanup] Restored .mcp.json")
 
     return None
 
 
 def reset_repo():
-    """Reset repo state between tasks, preserving benchmarks and .mcp.json."""
     subprocess.run(["git", "checkout", "."], cwd=str(REPO), capture_output=True)
-    subprocess.run(
-        ["git", "clean", "-fd", "daemon/"],
-        cwd=str(REPO), capture_output=True,
-    )
+    subprocess.run(["git", "clean", "-fd", "daemon/"], cwd=str(REPO), capture_output=True)
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="Run benchmark tasks")
-    parser.add_argument("--phase", required=True, choices=["before", "after"],
-                        help="'before' = unscoped (no .mcp.json), 'after' = scoped (.mcp.json)")
-    parser.add_argument("--task", type=str, default=None,
-                        help="Run a single task (1, 2, or 3). Default: all 3.")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--phase", required=True, choices=["before", "after"])
+    parser.add_argument("--task", type=str, default=None, help="Single task: 1, 2, or 3")
     args = parser.parse_args()
 
     RESULTS.mkdir(exist_ok=True)
 
-    print(f"Benchmark: {args.phase.upper()} runs via Claude Code Agent SDK")
-    print(f"Repo: {REPO}")
+    config_path = CONFIGS[args.phase]
+    with open(config_path) as f:
+        servers = json.load(f).get("mcpServers", {})
 
-    mcp_json = REPO / ".mcp.json"
-    if mcp_json.exists():
-        with open(mcp_json) as f:
-            servers = json.load(f).get("mcpServers", {})
-        print(f".mcp.json: {len(servers)} servers — {', '.join(sorted(servers.keys()))}")
-    else:
-        print(".mcp.json: not present")
-
-    if args.phase == "before":
-        print("Mode: UNSCOPED — .mcp.json will be temporarily removed during runs")
-    else:
-        print("Mode: SCOPED — using .mcp.json as deployed")
+    print(f"Benchmark: {args.phase.upper()}")
+    print(f"Config: {config_path.name} ({len(servers)} servers)")
+    print(f"Servers: {', '.join(sorted(servers.keys()))}")
     print()
 
     task_nums = [args.task] if args.task else ["1", "2", "3"]
@@ -209,9 +197,9 @@ async def main():
         await run_task(task_num, args.phase)
         reset_repo()
 
-    # Print comparison if both phases exist
+    # Comparison
     print(f"\n{'='*60}")
-    print("  RESULTS")
+    print("  COMPARISON")
     print(f"{'='*60}\n")
 
     for task_num in ["1", "2", "3"]:
@@ -220,30 +208,18 @@ async def main():
 
         if before_path.exists() and after_path.exists():
             with open(before_path) as f:
-                before = json.load(f)
+                b = json.load(f)
             with open(after_path) as f:
-                after = json.load(f)
+                a = json.load(f)
 
-            b_cost = before.get("cost_usd") or 0
-            a_cost = after.get("cost_usd") or 0
-            cost_pct = ((b_cost - a_cost) / b_cost * 100) if b_cost > 0 else 0
+            b_cost = b.get("cost_usd") or 0
+            a_cost = a.get("cost_usd") or 0
+            cost_delta = ((a_cost - b_cost) / b_cost * 100) if b_cost > 0 else 0
 
-            b_tokens = before["tokens"]["total"]
-            a_tokens = after["tokens"]["total"]
-            tok_pct = ((b_tokens - a_tokens) / b_tokens * 100) if b_tokens > 0 else 0
-
-            print(f"  Task {task_num}: {before['task_name']}")
-            print(f"    Before: {before['duration_human']} / {b_tokens:,} tok / ${b_cost:.2f} / {before['tool_calls']['total']} tools")
-            print(f"    After:  {after['duration_human']} / {a_tokens:,} tok / ${a_cost:.2f} / {after['tool_calls']['total']} tools")
-            print(f"    Δ cost: {cost_pct:+.1f}%  Δ tokens: {tok_pct:+.1f}%")
-            print()
-        else:
-            # Print whichever exists
-            for phase_name, path in [("before", before_path), ("after", after_path)]:
-                if path.exists():
-                    with open(path) as f:
-                        d = json.load(f)
-                    print(f"  Task {task_num} ({phase_name}): {d['duration_human']} / {d['tokens']['total']:,} tok / ${d.get('cost_usd', 0):.2f} / {d['tool_calls']['total']} tools")
+            print(f"  Task {task_num}: {b['task_name']}")
+            print(f"    27 srv: {b['duration_human']:>8} | {b['tokens']['total']:>8,} tok | ${b_cost:>6.2f} | {b['tool_calls']['total']:>3} tools")
+            print(f"     5 srv: {a['duration_human']:>8} | {a['tokens']['total']:>8,} tok | ${a_cost:>6.2f} | {a['tool_calls']['total']:>3} tools")
+            print(f"    Cost Δ: {cost_delta:+.1f}%")
             print()
 
 
