@@ -72,13 +72,15 @@ header h1 span { color: var(--accent); }
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 0;
-  gap: 4px;
+  padding: 8px 0;
+  gap: 2px;
   flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .nav-rail-btn {
   width: 44px;
-  height: 44px;
+  min-height: 38px;
   border: none;
   background: transparent;
   border-radius: var(--radius);
@@ -87,15 +89,16 @@ header h1 span { color: var(--accent); }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   color: var(--text-dim);
   transition: background 0.15s, color 0.15s;
   font-size: 10px;
+  flex-shrink: 0;
 }
 .nav-rail-btn:hover { background: var(--bg-hover); color: var(--text); }
 .nav-rail-btn.active { background: var(--accent-dim); color: var(--accent); }
-.nav-rail-icon { font-size: 18px; line-height: 1; }
-.nav-rail-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
+.nav-rail-icon { font-size: 16px; line-height: 1; }
+.nav-rail-label { font-size: 8px; text-transform: uppercase; letter-spacing: 0.3px; }
 
 /* ── Notification Badge ─────────────────────────────────────── */
 .notification-badge {
