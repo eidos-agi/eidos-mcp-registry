@@ -66,37 +66,91 @@ function createCard(n) {
         });
       } else if (action.endpoint) {
         btn.className = 'btn btn-primary';
-        btn.addEventListener('click', async () => {
-          // Approve the notification
-          await api.post(`/notifications/${n.id}/approve`);
-          // Execute the action and record the audit result
-          let actionResult = null;
-          try {
-            if (action.method === 'POST') {
-              actionResult = await api.post(action.endpoint, action.body);
-            } else if (action.method === 'GET') {
-              actionResult = await api.get(action.endpoint);
-            }
-            // Record audit proof
-            if (actionResult) {
+        btn.addEventListener('click', () => {
+          // Immediately update UI — don't block
+          btn.disabled = true;
+          btn.textContent = 'Running...';
+
+          // Disable all other buttons on this card
+          card.querySelectorAll('.btn').forEach(b => { b.disabled = true; });
+
+          // Add a live status indicator to the card
+          const statusEl = document.createElement('div');
+          statusEl.style.cssText = 'margin-top:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--accent);border-radius:var(--radius);font-size:12px;color:var(--accent);display:flex;align-items:center;gap:8px';
+          const spinner = document.createElement('span');
+          spinner.style.cssText = 'display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite';
+          const statusText = document.createElement('span');
+          statusText.textContent = `Executing: ${action.label}...`;
+          statusEl.append(spinner, statusText);
+          card.appendChild(statusEl);
+
+          // Run async — don't await, let UI stay responsive
+          (async () => {
+            try {
+              // Approve first
+              await api.post(`/notifications/${n.id}/approve`);
+              statusText.textContent = 'Approved. Calling ' + action.endpoint + '...';
+
+              // Execute the action
+              let actionResult = null;
+              if (action.method === 'POST') {
+                actionResult = await api.post(action.endpoint, action.body);
+              } else if (action.method === 'GET') {
+                actionResult = await api.get(action.endpoint);
+              }
+
+              // Record audit proof
               await api.post(`/notifications/${n.id}/audit`, {
                 action_taken: action.label,
                 endpoint: action.endpoint,
-                result: actionResult,
+                result: actionResult || {},
                 completed_at: new Date().toISOString(),
               });
+
+              // Show success
+              statusEl.style.borderColor = 'var(--green)';
+              statusEl.style.color = 'var(--green)';
+              spinner.remove();
+              const checkmark = document.createElement('span');
+              checkmark.textContent = '\u2713';
+              checkmark.style.cssText = 'font-size:16px;font-weight:700';
+              statusEl.prepend(checkmark);
+
+              // Build result summary
+              const r = actionResult || {};
+              const parts = [];
+              if (r.added !== undefined) parts.push(`${r.added} fixed`);
+              if (r.already !== undefined) parts.push(`${r.already} already done`);
+              if (r.written) parts.push(`${r.written.length || r.written} written`);
+              if (r.errors && (r.errors.length || r.errors > 0)) parts.push(`${r.errors.length || r.errors} errors`);
+              statusText.textContent = parts.length > 0
+                ? `Done: ${parts.join(', ')}`
+                : 'Done';
+
+              // Refresh badge count after a beat
+              setTimeout(() => {
+                updateNotificationBadge();
+                loadData();
+              }, 500);
+
+            } catch (err) {
+              // Show error
+              statusEl.style.borderColor = 'var(--red)';
+              statusEl.style.color = 'var(--red)';
+              spinner.remove();
+              statusText.textContent = 'Failed: ' + (err.message || 'Unknown error');
+
+              // Still record the failure
+              try {
+                await api.post(`/notifications/${n.id}/audit`, {
+                  action_taken: action.label,
+                  endpoint: action.endpoint,
+                  error: err.message || 'Action failed',
+                  completed_at: new Date().toISOString(),
+                });
+              } catch {}
             }
-          } catch (err) {
-            await api.post(`/notifications/${n.id}/audit`, {
-              action_taken: action.label,
-              endpoint: action.endpoint,
-              error: err.message || 'Action failed',
-              completed_at: new Date().toISOString(),
-            });
-          }
-          renderNotificationsView();
-          updateNotificationBadge();
-          loadData();
+          })();
         });
       }
 
