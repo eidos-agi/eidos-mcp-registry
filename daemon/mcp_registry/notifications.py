@@ -106,16 +106,28 @@ class NotificationStore:
         ))
         return filtered[:limit]
 
-    def approve(self, nid: str) -> dict | None:
-        """Mark as approved. Returns the notification with its first action."""
+    def approve(self, nid: str, audit_result: dict | None = None) -> dict | None:
+        """Mark as approved with optional audit result proving the action worked."""
         for n in self._notifications:
             if n["id"] == nid:
                 n["status"] = "approved"
                 n["resolved_at"] = time.time()
+                if audit_result:
+                    n["audit_result"] = audit_result
                 self._save()
                 action = n["actions"][0] if n.get("actions") else None
                 return {"notification": n, "action": action}
         return None
+
+    def record_audit(self, nid: str, audit_result: dict):
+        """Attach audit proof to an already-approved notification."""
+        for n in self._notifications:
+            if n["id"] == nid:
+                n["audit_result"] = audit_result
+                n["audit_at"] = time.time()
+                self._save()
+                return True
+        return False
 
     def dismiss(self, nid: str) -> dict | None:
         """Mark as dismissed."""

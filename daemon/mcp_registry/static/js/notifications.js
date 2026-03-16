@@ -69,9 +69,30 @@ function createCard(n) {
         btn.addEventListener('click', async () => {
           // Approve the notification
           await api.post(`/notifications/${n.id}/approve`);
-          // Execute the action
-          if (action.method === 'POST') {
-            await api.post(action.endpoint, action.body);
+          // Execute the action and record the audit result
+          let actionResult = null;
+          try {
+            if (action.method === 'POST') {
+              actionResult = await api.post(action.endpoint, action.body);
+            } else if (action.method === 'GET') {
+              actionResult = await api.get(action.endpoint);
+            }
+            // Record audit proof
+            if (actionResult) {
+              await api.post(`/notifications/${n.id}/audit`, {
+                action_taken: action.label,
+                endpoint: action.endpoint,
+                result: actionResult,
+                completed_at: new Date().toISOString(),
+              });
+            }
+          } catch (err) {
+            await api.post(`/notifications/${n.id}/audit`, {
+              action_taken: action.label,
+              endpoint: action.endpoint,
+              error: err.message || 'Action failed',
+              completed_at: new Date().toISOString(),
+            });
           }
           renderNotificationsView();
           updateNotificationBadge();
@@ -97,6 +118,63 @@ function createCard(n) {
     }
 
     card.appendChild(actions);
+  }
+
+  // Audit result (for approved/dismissed notifications)
+  if (n.audit_result) {
+    const audit = document.createElement('div');
+    audit.style.cssText = 'margin-top:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font-size:12px';
+
+    const auditHeader = document.createElement('div');
+    auditHeader.style.cssText = 'font-weight:600;color:var(--green);margin-bottom:6px;display:flex;align-items:center;gap:6px';
+    auditHeader.textContent = '\u2713 Audit Proof';
+    audit.appendChild(auditHeader);
+
+    const ar = n.audit_result;
+    if (ar.action_taken) {
+      const row = document.createElement('div');
+      row.style.cssText = 'color:var(--text-dim);padding:2px 0';
+      row.textContent = 'Action: ' + ar.action_taken;
+      audit.appendChild(row);
+    }
+    if (ar.completed_at) {
+      const row = document.createElement('div');
+      row.style.cssText = 'color:var(--text-dim);padding:2px 0';
+      row.textContent = 'Completed: ' + new Date(ar.completed_at).toLocaleString();
+      audit.appendChild(row);
+    }
+    if (ar.error) {
+      const row = document.createElement('div');
+      row.style.cssText = 'color:var(--red);padding:2px 0;font-weight:500';
+      row.textContent = 'Error: ' + ar.error;
+      audit.appendChild(row);
+    }
+    if (ar.result) {
+      const result = ar.result;
+      // Show key result fields
+      const fields = [];
+      if (result.added !== undefined) fields.push(`${result.added} repos fixed`);
+      if (result.already !== undefined) fields.push(`${result.already} already done`);
+      if (result.written) fields.push(`${result.written.length || result.written} files written`);
+      if (result.restored) fields.push(`${result.restored.length || result.restored} files restored`);
+      if (result.removed) fields.push(`${result.removed.length || result.removed} removed`);
+      if (result.errors && (result.errors.length || result.errors > 0)) fields.push(`${result.errors.length || result.errors} errors`);
+
+      if (fields.length > 0) {
+        const row = document.createElement('div');
+        row.style.cssText = 'color:var(--text);padding:2px 0;font-weight:500';
+        row.textContent = 'Result: ' + fields.join(', ');
+        audit.appendChild(row);
+      } else {
+        // Show raw result as JSON
+        const row = document.createElement('pre');
+        row.style.cssText = 'color:var(--text-dim);padding:4px 0;font-size:11px;font-family:"SF Mono",Monaco,monospace;white-space:pre-wrap;max-height:100px;overflow-y:auto';
+        row.textContent = JSON.stringify(result, null, 2);
+        audit.appendChild(row);
+      }
+    }
+
+    card.appendChild(audit);
   }
 
   card.appendChild(timeEl);

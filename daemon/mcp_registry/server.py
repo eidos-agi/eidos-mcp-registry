@@ -807,6 +807,15 @@ async def approve_notification(nid: str):
     return result
 
 
+@app.post("/notifications/{nid}/audit")
+async def record_audit(nid: str, body: dict):
+    """Record the result of an approved action for proof."""
+    ok = notifications.record_audit(nid, body)
+    if not ok:
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    return {"ok": True}
+
+
 @app.post("/notifications/{nid}/dismiss")
 async def dismiss_notification(nid: str):
     result = notifications.dismiss_notification(nid)
