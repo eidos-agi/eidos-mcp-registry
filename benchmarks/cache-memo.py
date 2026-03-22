@@ -34,7 +34,7 @@ C_GREEN = "#1a7f37"
 C_RED = "#cf222e"
 C_GRAY = "#656d76"
 
-OUT = "/Users/dshanklinbv/repos-eidos-agi/eidos-mcp-registry/benchmarks/prompt-caching-memo.pdf"
+OUT = "./benchmarks/prompt-caching-memo.pdf"
 
 
 def make_chart(fig, width=5.5*inch, height=2.8*inch):

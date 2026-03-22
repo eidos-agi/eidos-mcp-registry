@@ -29,7 +29,7 @@ from claude_agent_sdk import (
     ToolUseBlock,
 )
 
-REPO = Path("/Users/dshanklinbv/repos-eidos-agi/eidos-mcp-registry")
+REPO = Path(".")
 RESULTS = REPO / "benchmarks" / "results"
 BENCHMARKS = REPO / "benchmarks"
 
